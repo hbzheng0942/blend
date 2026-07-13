@@ -18,8 +18,8 @@ import { display, kicker, theme } from "@/theme";
 export default function Forge() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const {
-    tree, nodes, elements, loadTree, addElementFromBlob, forge, canonize, moveNode,
-    status, modelId, apiKey, providerChoice,
+    tree, nodes, elements, loadTree, addElementFromBlob, forge, canonize, cancelForge,
+    moveNode, status, modelId, apiKey, providerChoice,
   } = useBlend();
 
   const [operator, setOperator] = useState<OperatorId>("fuse");
@@ -414,8 +414,10 @@ export default function Forge() {
         {status.phase === "forging" ? (
           <ForgeRitual
             symbol={OPERATORS.find((o) => o.id === operator)?.symbol ?? "⊕"}
-            candidate={status.candidate}
+            done={status.done}
             total={status.total}
+            conceptNames={status.conceptNames}
+            onAbort={cancelForge}
           />
         ) : (
           <Pressable

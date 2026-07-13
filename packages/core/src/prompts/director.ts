@@ -46,7 +46,8 @@ export function buildDirectorSystemPrompt(count: number): string {
     "- Each concept must make deliberate design choices; be surprising: use scale twists, " +
     "unexpected function, or poetic reinterpretation. Avoid literal collage.\n" +
     "- Concepts must differ clearly from each other in design direction.\n" +
-    "- Each concept gets a short evocative NAME (2-4 words, English).\n" +
+    "- Each concept gets a NAME in Chinese: 2-6 个字，言简意赅，可以带幽默感或反差萌" +
+    "（如「章鱼茶壶」「深渊下午茶」），不要英文不要拼音。\n" +
     '- The "prompt" field must be a self-contained English image-generation prompt ' +
     "(40-80 words), concrete and visual, describing the SINGLE fused subject, its " +
     'materials, lighting and background. It must not reference "image 1/2".\n' +

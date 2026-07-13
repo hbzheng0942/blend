@@ -39,9 +39,19 @@ export const loadGeminiKey = () => globalThis.localStorage?.getItem(GEMINI_KEY_S
 
 export type ForgeStatus =
   | { phase: "idle" }
-  | { phase: "forging"; candidate: number; total: number }
+  | {
+      phase: "forging";
+      /** 已出炉候选数（并行生成，先出先展示） */
+      done: number;
+      total: number;
+      /** director 方案名（拿到后即展示，等待期有盼头） */
+      conceptNames?: string[];
+    }
   | { phase: "overheat"; cooldownSeconds: number }
   | { phase: "error"; message: string };
+
+/** 当前锻造的中止句柄（一次只有一炉在烧）。 */
+let forgeController: AbortController | null = null;
 
 interface BlendState {
   apiKey: string;
@@ -78,6 +88,8 @@ interface BlendState {
     candidates?: number;
   }): Promise<BlendNode | null>;
   canonize(nodeId: string, outputId: string): Promise<void>;
+  /** 中止当前锻造（已出炉的候选保留） */
+  cancelForge(): void;
   /** 画布拖拽后持久化节点位置 */
   moveNode(nodeId: string, pos: { x: number; y: number }): Promise<void>;
 
@@ -215,14 +227,17 @@ export const useBlend = create<BlendState>((set, get) => ({
       async runStep(hashes: string[], stepPrompt: string) {
         // 1536px 上限：保融合细节的同时避免多 MB payload 触发上游断连
         const images = await Promise.all(hashes.map((h) => blobDataUriScaled(h, 1536)));
-        const res = await provider.generate({ prompt: stepPrompt, images });
+        const res = await provider.generate({ prompt: stepPrompt, images, signal });
         return storeDataUri(res.image);
       },
     };
 
     // VLM director：一次调用产出 candidates 条互异设计方案（每候选一条）。
     // 失败/超时静默回退静态骨架，不增加锻造失败面。
-    set({ status: { phase: "forging", candidate: 1, total: candidates } });
+    forgeController?.abort();
+    forgeController = new AbortController();
+    const signal = forgeController.signal;
+    set({ status: { phase: "forging", done: 0, total: candidates } });
     let concepts: DirectorConcept[] | null = null;
     if (agnesChannel) {
       const director = createAgnesDirector(agnesChannel);
@@ -235,9 +250,13 @@ export const useBlend = create<BlendState>((set, get) => ({
       concepts = await director
         .direct({
           operator, images: directorImages, count: candidates,
-          styleFragments: styleFragments(styleTags), userPromptExtra,
+          styleFragments: styleFragments(styleTags), userPromptExtra, signal,
         })
         .catch(() => null);
+    }
+    if (signal.aborted) {
+      set({ status: { phase: "idle" } });
+      return null;
     }
     // subtract/intersect 只有 director 出的 prompt 才语义达标（spike 翻案结论），
     // 回退静态骨架必然出废图 → 直接中止
@@ -245,52 +264,78 @@ export const useBlend = create<BlendState>((set, get) => ({
       set({ status: { phase: "error", message: "此禁术需要导演出手，但导演暂时联系不上——稍后再试" } });
       return null;
     }
+    const conceptNames = concepts?.flatMap((c) => (c.name ? [c.name] : []));
+    set({ status: { phase: "forging", done: 0, total: candidates, conceptNames } });
 
-    try {
-      for (let i = 0; i < candidates; i++) {
-        set({ status: { phase: "forging", candidate: i + 1, total: candidates } });
+    // 并行抽卡 + 先出先展示：每张候选完成即落库刷新，不等整炉。
+    const s = getStorage();
+    let node: BlendNode | null = intoNodeId
+      ? (nodes.find((n) => n.id === intoNodeId) ?? null)
+      : null;
+    if (intoNodeId && !node) throw new Error("reroll target node not found");
+    let persistQueue: Promise<void> = Promise.resolve();
+    const persistOutput = (o: Output) => {
+      persistQueue = persistQueue.then(async () => {
+        outputs.push(o);
+        if (!node) {
+          node = {
+            id: uuid(), recipe, outputs: [o],
+            canonicalOutputId: o.id, createdAt: Date.now(),
+          };
+          await s.putNode(tree.id, node);
+          const cur = get().tree!;
+          const next = { ...cur, nodeIds: [...cur.nodeIds, node.id], updatedAt: Date.now() };
+          await s.putTree(next);
+          set({ tree: next });
+        } else {
+          node = { ...node, outputs: [...node.outputs, o] };
+          await s.putNode(tree.id, node);
+        }
+        const rest = get().nodes.filter((n) => n.id !== node!.id);
+        set({
+          nodes: [...rest, node].sort((a, b) => a.createdAt - b.createdAt),
+          status: { phase: "forging", done: outputs.length, total: candidates, conceptNames },
+        });
+      });
+      return persistQueue;
+    };
+
+    const results = await Promise.allSettled(
+      Array.from({ length: candidates }, async (_v, i) => {
         const concept = concepts?.[i % concepts.length];
         const prompt = concept?.prompt ?? staticPrompt;
         const { outputHash, executionPlan } = await runCascade(inputHashes, prompt, runner);
-        outputs.push({
+        await persistOutput({
           id: uuid(), imageHash: outputHash,
           executionPlan, providerId: provider.id, modelId: effectiveModelId, finalPrompt: prompt,
           ...(concept ? { conceptName: concept.name } : {}),
         });
-      }
-    } catch (e) {
-      if (outputs.length === 0) {
-        // 一张都没炼出来才算失败；炼出部分则带着已有成果落库
-        if (e instanceof FurnaceOverheatError) {
-          set({ status: { phase: "overheat", cooldownSeconds: e.cooldownSeconds } });
-        } else {
-          set({ status: { phase: "error", message: (e as Error).message } });
-        }
+      }),
+    );
+    await persistQueue;
+
+    if (outputs.length === 0) {
+      // 一张都没炼出来才算失败；炼出部分则带着已有成果落库
+      if (signal.aborted) {
+        set({ status: { phase: "idle" } });
         return null;
       }
+      const firstErr = results.find(
+        (r): r is PromiseRejectedResult => r.status === "rejected",
+      )?.reason as Error | undefined;
+      if (firstErr instanceof FurnaceOverheatError) {
+        set({ status: { phase: "overheat", cooldownSeconds: firstErr.cooldownSeconds } });
+      } else {
+        set({ status: { phase: "error", message: firstErr?.message ?? "锻造失败" } });
+      }
+      return null;
     }
-
-    const s = getStorage();
-    let node: BlendNode;
-    if (intoNodeId) {
-      const existing = nodes.find((n) => n.id === intoNodeId);
-      if (!existing) throw new Error("reroll target node not found");
-      node = { ...existing, outputs: [...existing.outputs, ...outputs] };
-    } else {
-      node = {
-        id: uuid(), recipe, outputs,
-        canonicalOutputId: outputs[0]!.id, createdAt: Date.now(),
-      };
-    }
-    await s.putNode(tree.id, node);
-    if (!intoNodeId) {
-      const next = { ...tree, nodeIds: [...tree.nodeIds, node.id], updatedAt: Date.now() };
-      await s.putTree(next);
-      set({ tree: next });
-    }
-    const rest = get().nodes.filter((n) => n.id !== node.id);
-    set({ nodes: [...rest, node].sort((a, b) => a.createdAt - b.createdAt), status: { phase: "idle" } });
+    set({ status: { phase: "idle" } });
     return node;
+  },
+
+  cancelForge() {
+    forgeController?.abort();
   },
 
   async canonize(nodeId, outputId) {
