@@ -44,16 +44,13 @@ describe("agnes director", () => {
     expect(r![0]!.name).toBe("Ceramic Cephalopod");
   });
 
-  it("HTTP 失败重试一次后放弃 → null（静默回退）", async () => {
-    const f = vi
-      .fn()
-      .mockResolvedValueOnce(new Response("boom", { status: 503 }))
-      .mockResolvedValueOnce(new Response("boom", { status: 503 }));
+  it("HTTP 持续失败重试两次后放弃 → null（静默回退）", async () => {
+    const f = vi.fn().mockResolvedValue(new Response("boom", { status: 503 }));
     const d = createAgnesDirector({ apiKey: "k", fetchImpl: f as typeof fetch });
     const r = await d.direct({ operator: "fuse", images: [], styleFragments: [], count: 2 });
     expect(r).toBeNull();
-    expect(f).toHaveBeenCalledTimes(2);
-  }, 10_000);
+    expect(f).toHaveBeenCalledTimes(3);
+  }, 15_000);
 
   it("回复不是合法 JSON → 重试，第二次成功", async () => {
     const f = vi

@@ -43,10 +43,13 @@ export interface OperatorMeta {
 export const DIRECTOR_ONLY_OPERATORS: ReadonlySet<OperatorId> = new Set(["subtract", "intersect"]);
 
 export const OPERATORS: OperatorMeta[] = [
-  { id: "fuse", symbol: "⊕", nameZh: "融合", nameEn: "Fuse" },
+  {
+    id: "fuse", symbol: "⊕", nameZh: "融合", nameEn: "Fuse",
+    hint: "所有图平等混血，炼成一个全新物种——最百搭的默认玩法",
+  },
   {
     id: "inject", symbol: "→", nameZh: "注入", nameEn: "Inject",
-    hint: "第二个要素放质感/氛围强的图（材质、生物、星空都行）；两个刚性人造物之间不稳定",
+    hint: "第一张图保形状，用后面图的材质/气质重新做一遍；第二个要素放质感强的图（材质、生物、星空都行）",
   },
   {
     id: "subtract", symbol: "⊖", nameZh: "相减", nameEn: "Subtract",
@@ -56,7 +59,10 @@ export const OPERATORS: OperatorMeta[] = [
     id: "intersect", symbol: "∩", nameZh: "交集", nameEn: "Intersect",
     hint: "蒸馏所有要素的共同气质，炼出全新之物（由导演模型解读，需在线）",
   },
-  { id: "absorb", symbol: "⊃", nameZh: "吞噬", nameEn: "Absorb" },
+  {
+    id: "absorb", symbol: "⊃", nameZh: "吞噬", nameEn: "Absorb",
+    hint: "第一张图当宿主保持原样，把其他图拆成碎片长进它的表面——比融合更保守，比注入更狂野",
+  },
 ];
 
 /** provider 层可按模型注册 prompt 变体覆盖默认骨架。 */

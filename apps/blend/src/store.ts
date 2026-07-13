@@ -11,7 +11,7 @@ import {
   FurnaceOverheatError, GEMINI_DEFAULT_MODEL, createAgnesDirector, createAgnesProvider,
   createGeminiProvider,
 } from "@blend/providers";
-import { blobDataUri, storeBlob, storeDataUri } from "./blobs";
+import { blobDataUriScaled, storeBlob, storeDataUri } from "./blobs";
 import { getStorage } from "./storage";
 
 /** 设置（key 只存本地，PRD 2.4 DECISION LOCKED）。 */
@@ -213,7 +213,8 @@ export const useBlend = create<BlendState>((set, get) => ({
       modelId: effectiveModelId,
       maxInputImages: provider.capabilities.maxInputImages,
       async runStep(hashes: string[], stepPrompt: string) {
-        const images = await Promise.all(hashes.map(blobDataUri));
+        // 1536px 上限：保融合细节的同时避免多 MB payload 触发上游断连
+        const images = await Promise.all(hashes.map((h) => blobDataUriScaled(h, 1536)));
         const res = await provider.generate({ prompt: stepPrompt, images });
         return storeDataUri(res.image);
       },
@@ -225,8 +226,11 @@ export const useBlend = create<BlendState>((set, get) => ({
     let concepts: DirectorConcept[] | null = null;
     if (agnesChannel) {
       const director = createAgnesDirector(agnesChannel);
+      // director 只需看懂内容，512px 大幅压 payload（大图是 chat 端点断连主因）
       const directorImages = await Promise.all(
-        inputHashes.slice(0, provider.capabilities.maxInputImages).map(blobDataUri),
+        inputHashes
+          .slice(0, provider.capabilities.maxInputImages)
+          .map((h) => blobDataUriScaled(h, 512)),
       );
       concepts = await director
         .direct({

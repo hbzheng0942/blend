@@ -12,7 +12,8 @@ import { AGNES_BASE_URL } from "./agnes";
 
 export const AGNES_DIRECTOR_MODEL = "agnes-2.0-flash";
 const TIMEOUT_MS = 60_000;
-const RETRY_DELAYS_MS = [3_000];
+// 上游 chat 端点随机断连较频繁（尤其大 payload），多给两次机会
+const RETRY_DELAYS_MS = [2_000, 6_000];
 
 export interface DirectorConfig {
   apiKey: string;

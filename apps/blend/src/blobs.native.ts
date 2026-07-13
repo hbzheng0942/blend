@@ -72,3 +72,8 @@ export async function pickImageFiles(): Promise<Blob[]> {
     .filter((a) => a.base64)
     .map((a) => new Blob([base64ToBytes(a.base64!) as Uint8Array<ArrayBuffer>], { type: "image/png" }));
 }
+
+/** native 端暂不缩放（无 canvas；后续可换 expo-image-manipulator）。 */
+export async function blobDataUriScaled(hash: string, _maxDim: number): Promise<string> {
+  return blobDataUri(hash);
+}

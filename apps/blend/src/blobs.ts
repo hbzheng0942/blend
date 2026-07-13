@@ -37,6 +37,28 @@ export async function blobDataUri(hash: string): Promise<string> {
   });
 }
 
+/**
+ * hash → 缩放后的 JPEG data URI。
+ * Agnes chat/生图端点对大 payload 极不稳定（实测多 MB 请求体随机断连），
+ * director 只需看懂内容（512px 足够），生图输入 1536px 保细节。
+ */
+export async function blobDataUriScaled(hash: string, maxDim: number): Promise<string> {
+  const blob = await getStorage().getBlob(hash);
+  if (!blob) throw new Error("blob not found: " + hash);
+  const bmp = await createImageBitmap(blob);
+  const scale = Math.min(1, maxDim / Math.max(bmp.width, bmp.height));
+  if (scale === 1 && blob.size < 400_000) {
+    bmp.close();
+    return blobDataUri(hash);
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bmp.width * scale);
+  canvas.height = Math.round(bmp.height * scale);
+  canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  bmp.close();
+  return canvas.toDataURL("image/jpeg", 0.88);
+}
+
 /** data URI（provider 返回值）→ 存为 blob，返回 hash。 */
 export async function storeDataUri(dataUri: string): Promise<string> {
   const resp = await fetch(dataUri);

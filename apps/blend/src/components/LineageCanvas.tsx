@@ -115,11 +115,20 @@ export function LineageCanvas({
   );
   const reader = useMemo(() => ({ getNode: (id: string) => nodes.find((n) => n.id === id) }), [nodes]);
 
+  // 拖拽中的节点：连线实时跟随
+  const posOf = (id: string): Pos | undefined => {
+    const base = nodePos.get(id);
+    if (!base) return undefined;
+    return drag?.id === id
+      ? { x: Math.max(0, base.x + drag.dx), y: Math.max(0, base.y + drag.dy) }
+      : base;
+  };
+
   const edges: Array<{ from: Pos; to: Pos; key: string; hot: boolean }> = [];
   for (const n of nodes) {
-    const to = nodePos.get(n.id)!;
+    const to = posOf(n.id)!;
     for (const pid of n.recipe.parentNodeIds) {
-      const from = nodePos.get(pid);
+      const from = posOf(pid);
       if (from) edges.push({
         key: pid + ">" + n.id,
         hot: selectedIds.includes(n.id),
@@ -166,9 +175,7 @@ export function LineageCanvas({
 
           {nodes.map((n, i) => {
             const base = nodePos.get(n.id)!;
-            const p = drag?.id === n.id
-              ? { x: Math.max(0, base.x + drag.dx), y: Math.max(0, base.y + drag.dy) }
-              : base;
+            const p = posOf(n.id)!;
             const selected = selectedIds.includes(n.id);
             const stale = isNodeStale(n, reader);
             const canonical = n.outputs.find((o) => o.id === n.canonicalOutputId);
