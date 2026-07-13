@@ -7,7 +7,7 @@ import type { BlendMode, OperatorId } from "@blend/core";
 import { MAX_STYLE_TAGS, OPERATORS, STYLE_TAGS } from "@blend/core";
 import { createAgnesProvider, createGeminiProvider } from "@blend/providers";
 import { pickImageFiles } from "@/blobs";
-import { exportPoster } from "@/poster";
+import { downloadOutputImage, exportLineagePoster, exportPoster } from "@/poster";
 import { exportRecipeCode } from "@/recipecode";
 import { ForgeRitual } from "@/components/ForgeRitual";
 import { HashImage } from "@/components/HashImage";
@@ -167,17 +167,30 @@ export default function Forge() {
           </Text>
           <View style={styles.candidates}>
             {detailNode.outputs.map((o) => (
-              <Pressable key={o.id} onPress={() => void canonize(detailNode.id, o.id)}>
-                <HashImage hash={o.imageHash} size={148} selected={o.id === detailNode.canonicalOutputId} />
-                {o.conceptName && (
-                  <Text style={styles.candName} numberOfLines={1}>
-                    {o.conceptName}
+              <View key={o.id} style={{ alignItems: "center" }}>
+                <Pressable onPress={() => void canonize(detailNode.id, o.id)}>
+                  <HashImage hash={o.imageHash} size={148} selected={o.id === detailNode.canonicalOutputId} />
+                  {o.conceptName && (
+                    <Text style={styles.candName} numberOfLines={1}>
+                      {o.conceptName}
+                    </Text>
+                  )}
+                  <Text style={styles.candLabel}>
+                    {o.id === detailNode.canonicalOutputId ? "★ 已入谱" : "点选入谱"}
                   </Text>
-                )}
-                <Text style={styles.candLabel}>
-                  {o.id === detailNode.canonicalOutputId ? "★ 已入谱" : "点选入谱"}
-                </Text>
-              </Pressable>
+                </Pressable>
+                <Pressable
+                  hitSlop={6}
+                  onPress={() =>
+                    void downloadOutputImage(
+                      o.imageHash,
+                      `${tree.title}-${o.conceptName ?? o.id.slice(0, 6)}.png`,
+                    ).catch(() => {})
+                  }
+                >
+                  <Text style={{ color: theme.textDim, fontSize: 12, marginTop: 3 }}>⬇ 原图</Text>
+                </Pressable>
+              </View>
             ))}
             <Pressable
               style={styles.rerollBtn}
@@ -204,6 +217,14 @@ export default function Forge() {
               }}
             >
               <Text style={{ color: theme.textDim, textAlign: "center" }}>🖼{"\n"}卡面</Text>
+            </Pressable>
+            <Pressable
+              style={styles.rerollBtn}
+              onPress={() =>
+                void exportLineagePoster(tree, nodes, elements, detailNode.id).catch(() => {})
+              }
+            >
+              <Text style={{ color: theme.textDim, textAlign: "center" }}>🗺{"\n"}谱系卡</Text>
             </Pressable>
             <Pressable
               style={styles.rerollBtn}
