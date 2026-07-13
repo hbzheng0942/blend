@@ -1,0 +1,26 @@
+[
+ {
+  "cell": "rescue_subtract_txt",
+  "ok": true,
+  "name": "Subterranean Silhouette",
+  "prompt": "A sleek white high-top sneaker hovering above a dark obsidian ground. The shoe's pristine canvas surface is starkly illuminated by harsh overhead spotlights. Below it, no lava or fire exists; instead, cool, smooth matte rock absorbs the light, creating deep shadows and emphasizing the shoe's clean white form and texture."
+ },
+ {
+  "cell": "rescue_subtract_img",
+  "ok": true,
+  "name": "Subterranean Silhouette",
+  "prompt": "A sleek white high-top sneaker hovering above a dark obsidian ground. The shoe's pristine canvas surface is starkly illuminated by harsh overhead spotlights. Below it, no lava or fire exists; instead, cool, smooth matte rock absorbs the light, creating deep shadows and emphasizing the shoe's clean white form and texture."
+ },
+ {
+  "cell": "rescue_intersect_txt",
+  "ok": true,
+  "name": "Nebula Origami",
+  "prompt": "A translucent, geometric origami crane constructed from glowing gossamer fabric, suspended against the deep velvet blackness of space. Its folded wings shimmer with ethereal bioluminescence in shades of soft blue, violet, and gold, mimicking the radiant core of a nebula. Subtle starlight catches the sharp creases, creating a celestial sculpture that bridges earthly grace with cosmic grandeur."
+ },
+ {
+  "cell": "rescue_intersect_img",
+  "ok": true,
+  "name": "Nebula Origami",
+  "prompt": "A translucent, geometric origami crane constructed from glowing gossamer fabric, suspended against the deep velvet blackness of space. Its folded wings shimmer with ethereal bioluminescence in shades of soft blue, violet, and gold, mimicking the radiant core of a nebula. Subtle starlight catches the sharp creases, creating a celestial sculpture that bridges earthly grace with cosmic grandeur."
+ }
+]

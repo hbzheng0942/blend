@@ -1,0 +1,38 @@
+[
+ {
+  "cell": "cr_fuse_piano_jellyfish",
+  "ok": true,
+  "status": 200,
+  "error": null
+ },
+ {
+  "cell": "cr_fuse_flytrap_origami",
+  "ok": true,
+  "status": 200,
+  "error": null
+ },
+ {
+  "cell": "cr_fuse3_teapot_octopus_nebula",
+  "ok": true,
+  "status": 200,
+  "error": null
+ },
+ {
+  "cell": "cr_inject_piano_jellyfish",
+  "ok": true,
+  "status": 200,
+  "error": null
+ },
+ {
+  "cell": "cr_inject_origami_nebula",
+  "ok": true,
+  "status": 200,
+  "error": null
+ },
+ {
+  "cell": "cr_absorb_piano_flytrap",
+  "ok": true,
+  "status": 200,
+  "error": null
+ }
+]

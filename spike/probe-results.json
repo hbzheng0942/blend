@@ -1,0 +1,224 @@
+[
+ {
+  "model": "agnes-image-2.0-flash",
+  "n_images": 1,
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 503,
+    "elapsed": 8.8
+   },
+   {
+    "status": 503,
+    "elapsed": 1.2
+   },
+   {
+    "status": 503,
+    "elapsed": 2.5
+   },
+   {
+    "status": 200,
+    "elapsed": 31.6
+   }
+  ],
+  "error": null
+ },
+ {
+  "model": "agnes-image-2.0-flash",
+  "n_images": 2,
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 503,
+    "elapsed": 9.2
+   },
+   {
+    "status": 503,
+    "elapsed": 1.4
+   },
+   {
+    "status": 200,
+    "elapsed": 94.2
+   }
+  ],
+  "error": null
+ },
+ {
+  "model": "agnes-image-2.0-flash",
+  "n_images": 3,
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 503,
+    "elapsed": 3.0
+   },
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": 200,
+    "elapsed": 50.1
+   }
+  ],
+  "error": null
+ },
+ {
+  "model": "agnes-image-2.0-flash",
+  "n_images": 5,
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 503,
+    "elapsed": 1.2
+   },
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": 503,
+    "elapsed": 9.8
+   },
+   {
+    "status": 200,
+    "elapsed": 52.3
+   }
+  ],
+  "error": null
+ },
+ {
+  "model": "agnes-image-2.0-flash",
+  "n_images": 8,
+  "ok": false,
+  "status": 400,
+  "attempts": [
+   {
+    "status": 503,
+    "elapsed": 3.4
+   },
+   {
+    "status": 400,
+    "elapsed": 4.1
+   }
+  ],
+  "error": "{\"error\":{\"message\":\"too many input images: 8 provided, at most 6 allowed (request id: 20260712173942418268837CJmKVpYJ)\",\"type\":\"AgnesAI_error\",\"param\":\"\",\"code\":\"invalid_request\"}}"
+ },
+ {
+  "model": "agnes-image-2.1-flash",
+  "n_images": 1,
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 503,
+    "elapsed": 2.9
+   },
+   {
+    "status": 503,
+    "elapsed": 7.8
+   },
+   {
+    "status": 200,
+    "elapsed": 31.5
+   }
+  ],
+  "error": null
+ },
+ {
+  "model": "agnes-image-2.1-flash",
+  "n_images": 2,
+  "ok": false,
+  "status": 503,
+  "attempts": [
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": 503,
+    "elapsed": 8.1
+   },
+   {
+    "status": 503,
+    "elapsed": 0.9
+   }
+  ],
+  "error": "{\"error\":{\"message\":\"image queue is full, please retry later\",\"type\":\"do_request_failed\",\"param\":\"\",\"code\":\"do_request_failed\"}}"
+ },
+ {
+  "model": "agnes-image-2.1-flash",
+  "n_images": 3,
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": 503,
+    "elapsed": 9.6
+   },
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": 200,
+    "elapsed": 46.7
+   }
+  ],
+  "error": null
+ },
+ {
+  "model": "agnes-image-2.1-flash",
+  "n_images": 5,
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": 503,
+    "elapsed": 3.2
+   },
+   {
+    "status": 200,
+    "elapsed": 56.4
+   }
+  ],
+  "error": null
+ },
+ {
+  "model": "agnes-image-2.1-flash",
+  "n_images": 8,
+  "ok": false,
+  "status": 400,
+  "attempts": [
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": 400,
+    "elapsed": 7.7
+   }
+  ],
+  "error": "{\"error\":{\"message\":\"too many input images: 8 provided, at most 6 allowed (request id: 2026071217482333493803014AixQJA)\",\"type\":\"AgnesAI_error\",\"param\":\"\",\"code\":\"invalid_request\"}}"
+ }
+]

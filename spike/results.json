@@ -1,0 +1,686 @@
+[
+ {
+  "cell": "20_fuse_A",
+  "model": "agnes-image-2.0-flash",
+  "operator": "fuse",
+  "group": "A",
+  "inputs": [
+   "a1_teapot.png",
+   "a2_typewriter.png"
+  ],
+  "prompt": "Seamlessly fuse all subjects into one single coherent new object/creature, blending their key visual features equally.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 45.6
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "20_fuse_B",
+  "model": "agnes-image-2.0-flash",
+  "operator": "fuse",
+  "group": "B",
+  "inputs": [
+   "b1_sneaker.png",
+   "b2_lava.png"
+  ],
+  "prompt": "Seamlessly fuse all subjects into one single coherent new object/creature, blending their key visual features equally.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 42.5
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "20_fuse_C",
+  "model": "agnes-image-2.0-flash",
+  "operator": "fuse",
+  "group": "C",
+  "inputs": [
+   "c1_phonebooth.png",
+   "c2_octopus.png"
+  ],
+  "prompt": "Seamlessly fuse all subjects into one single coherent new object/creature, blending their key visual features equally.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 40.3
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "20_inject_A",
+  "model": "agnes-image-2.0-flash",
+  "operator": "inject",
+  "group": "A",
+  "inputs": [
+   "a1_teapot.png",
+   "a2_typewriter.png"
+  ],
+  "prompt": "Keep the form and silhouette of image 1, but re-render it entirely in the material/texture/style of image 2.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 50.5
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "20_inject_B",
+  "model": "agnes-image-2.0-flash",
+  "operator": "inject",
+  "group": "B",
+  "inputs": [
+   "b1_sneaker.png",
+   "b2_lava.png"
+  ],
+  "prompt": "Keep the form and silhouette of image 1, but re-render it entirely in the material/texture/style of image 2.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": 200,
+    "elapsed": 43.0
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "20_inject_C",
+  "model": "agnes-image-2.0-flash",
+  "operator": "inject",
+  "group": "C",
+  "inputs": [
+   "c1_phonebooth.png",
+   "c2_octopus.png"
+  ],
+  "prompt": "Keep the form and silhouette of image 1, but re-render it entirely in the material/texture/style of image 2.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": 200,
+    "elapsed": 56.6
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "20_subtract_A",
+  "model": "agnes-image-2.0-flash",
+  "operator": "subtract",
+  "group": "A",
+  "inputs": [
+   "a1_teapot.png",
+   "a2_typewriter.png"
+  ],
+  "prompt": "Take image 1 and remove/strip away all visual characteristics that resemble image 2.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 269.1
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "20_subtract_C",
+  "model": "agnes-image-2.0-flash",
+  "operator": "subtract",
+  "group": "C",
+  "inputs": [
+   "c1_phonebooth.png",
+   "c2_octopus.png"
+  ],
+  "prompt": "Take image 1 and remove/strip away all visual characteristics that resemble image 2.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": 200,
+    "elapsed": 52.0
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "20_intersect_B",
+  "model": "agnes-image-2.0-flash",
+  "operator": "intersect",
+  "group": "B",
+  "inputs": [
+   "b1_sneaker.png",
+   "b2_lava.png"
+  ],
+  "prompt": "Distill and depict only the visual and conceptual qualities that ALL input images share in common, as a single new image.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 68.8
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "20_intersect_C",
+  "model": "agnes-image-2.0-flash",
+  "operator": "intersect",
+  "group": "C",
+  "inputs": [
+   "c1_phonebooth.png",
+   "c2_octopus.png"
+  ],
+  "prompt": "Distill and depict only the visual and conceptual qualities that ALL input images share in common, as a single new image.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 503,
+    "elapsed": 19.5
+   },
+   {
+    "status": 200,
+    "elapsed": 92.6
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "20_absorb_A",
+  "model": "agnes-image-2.0-flash",
+  "operator": "absorb",
+  "group": "A",
+  "inputs": [
+   "a1_teapot.png",
+   "a2_typewriter.png"
+  ],
+  "prompt": "Image 1 is the dominant host; embed fragments and details of the other images into its surface and structure.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 503,
+    "elapsed": 5.1
+   },
+   {
+    "status": 200,
+    "elapsed": 41.6
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "20_absorb_B",
+  "model": "agnes-image-2.0-flash",
+  "operator": "absorb",
+  "group": "B",
+  "inputs": [
+   "b1_sneaker.png",
+   "b2_lava.png"
+  ],
+  "prompt": "Image 1 is the dominant host; embed fragments and details of the other images into its surface and structure.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 156.4
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "20_absorb_C",
+  "model": "agnes-image-2.0-flash",
+  "operator": "absorb",
+  "group": "C",
+  "inputs": [
+   "c1_phonebooth.png",
+   "c2_octopus.png"
+  ],
+  "prompt": "Image 1 is the dominant host; embed fragments and details of the other images into its surface and structure.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": 200,
+    "elapsed": 47.0
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "21_fuse_A",
+  "model": "agnes-image-2.1-flash",
+  "operator": "fuse",
+  "group": "A",
+  "inputs": [
+   "a1_teapot.png",
+   "a2_typewriter.png"
+  ],
+  "prompt": "Seamlessly fuse all subjects into one single coherent new object/creature, blending their key visual features equally.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 503,
+    "elapsed": 4.7
+   },
+   {
+    "status": 200,
+    "elapsed": 57.8
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "21_fuse_B",
+  "model": "agnes-image-2.1-flash",
+  "operator": "fuse",
+  "group": "B",
+  "inputs": [
+   "b1_sneaker.png",
+   "b2_lava.png"
+  ],
+  "prompt": "Seamlessly fuse all subjects into one single coherent new object/creature, blending their key visual features equally.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 57.2
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "21_fuse_C",
+  "model": "agnes-image-2.1-flash",
+  "operator": "fuse",
+  "group": "C",
+  "inputs": [
+   "c1_phonebooth.png",
+   "c2_octopus.png"
+  ],
+  "prompt": "Seamlessly fuse all subjects into one single coherent new object/creature, blending their key visual features equally.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": 200,
+    "elapsed": 113.8
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "21_inject_A",
+  "model": "agnes-image-2.1-flash",
+  "operator": "inject",
+  "group": "A",
+  "inputs": [
+   "a1_teapot.png",
+   "a2_typewriter.png"
+  ],
+  "prompt": "Keep the form and silhouette of image 1, but re-render it entirely in the material/texture/style of image 2.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": 200,
+    "elapsed": 59.1
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "21_inject_B",
+  "model": "agnes-image-2.1-flash",
+  "operator": "inject",
+  "group": "B",
+  "inputs": [
+   "b1_sneaker.png",
+   "b2_lava.png"
+  ],
+  "prompt": "Keep the form and silhouette of image 1, but re-render it entirely in the material/texture/style of image 2.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 503,
+    "elapsed": 26.2
+   },
+   {
+    "status": 503,
+    "elapsed": 18.5
+   },
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": 200,
+    "elapsed": 49.2
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "21_inject_C",
+  "model": "agnes-image-2.1-flash",
+  "operator": "inject",
+  "group": "C",
+  "inputs": [
+   "c1_phonebooth.png",
+   "c2_octopus.png"
+  ],
+  "prompt": "Keep the form and silhouette of image 1, but re-render it entirely in the material/texture/style of image 2.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 42.1
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "21_subtract_B",
+  "model": "agnes-image-2.1-flash",
+  "operator": "subtract",
+  "group": "B",
+  "inputs": [
+   "b1_sneaker.png",
+   "b2_lava.png"
+  ],
+  "prompt": "Take image 1 and remove/strip away all visual characteristics that resemble image 2.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 503,
+    "elapsed": 2.4
+   },
+   {
+    "status": 200,
+    "elapsed": 54.8
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "21_subtract_C",
+  "model": "agnes-image-2.1-flash",
+  "operator": "subtract",
+  "group": "C",
+  "inputs": [
+   "c1_phonebooth.png",
+   "c2_octopus.png"
+  ],
+  "prompt": "Take image 1 and remove/strip away all visual characteristics that resemble image 2.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 62.4
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "21_intersect_B",
+  "model": "agnes-image-2.1-flash",
+  "operator": "intersect",
+  "group": "B",
+  "inputs": [
+   "b1_sneaker.png",
+   "b2_lava.png"
+  ],
+  "prompt": "Distill and depict only the visual and conceptual qualities that ALL input images share in common, as a single new image.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 56.2
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "21_intersect_C",
+  "model": "agnes-image-2.1-flash",
+  "operator": "intersect",
+  "group": "C",
+  "inputs": [
+   "c1_phonebooth.png",
+   "c2_octopus.png"
+  ],
+  "prompt": "Distill and depict only the visual and conceptual qualities that ALL input images share in common, as a single new image.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 117.2
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "21_absorb_A",
+  "model": "agnes-image-2.1-flash",
+  "operator": "absorb",
+  "group": "A",
+  "inputs": [
+   "a1_teapot.png",
+   "a2_typewriter.png"
+  ],
+  "prompt": "Image 1 is the dominant host; embed fragments and details of the other images into its surface and structure.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": -1,
+    "elapsed": 0.0
+   },
+   {
+    "status": 200,
+    "elapsed": 39.2
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "21_absorb_B",
+  "model": "agnes-image-2.1-flash",
+  "operator": "absorb",
+  "group": "B",
+  "inputs": [
+   "b1_sneaker.png",
+   "b2_lava.png"
+  ],
+  "prompt": "Image 1 is the dominant host; embed fragments and details of the other images into its surface and structure.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 50.7
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "21_absorb_C",
+  "model": "agnes-image-2.1-flash",
+  "operator": "absorb",
+  "group": "C",
+  "inputs": [
+   "c1_phonebooth.png",
+   "c2_octopus.png"
+  ],
+  "prompt": "Image 1 is the dominant host; embed fragments and details of the other images into its surface and structure.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 42.4
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "20_subtract_B",
+  "model": "agnes-image-2.0-flash",
+  "operator": "subtract",
+  "group": "B",
+  "inputs": [
+   "b1_sneaker.png",
+   "b2_lava.png"
+  ],
+  "prompt": "Take image 1 and remove/strip away all visual characteristics that resemble image 2.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 58.1
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "20_intersect_A",
+  "model": "agnes-image-2.0-flash",
+  "operator": "intersect",
+  "group": "A",
+  "inputs": [
+   "a1_teapot.png",
+   "a2_typewriter.png"
+  ],
+  "prompt": "Distill and depict only the visual and conceptual qualities that ALL input images share in common, as a single new image.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 503,
+    "elapsed": 4.2
+   },
+   {
+    "status": 200,
+    "elapsed": 44.1
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "21_subtract_A",
+  "model": "agnes-image-2.1-flash",
+  "operator": "subtract",
+  "group": "A",
+  "inputs": [
+   "a1_teapot.png",
+   "a2_typewriter.png"
+  ],
+  "prompt": "Take image 1 and remove/strip away all visual characteristics that resemble image 2.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 503,
+    "elapsed": 227.5
+   },
+   {
+    "status": 503,
+    "elapsed": 4.1
+   },
+   {
+    "status": 503,
+    "elapsed": 66.7
+   },
+   {
+    "status": 200,
+    "elapsed": 50.6
+   }
+  ],
+  "error": null
+ },
+ {
+  "cell": "21_intersect_A",
+  "model": "agnes-image-2.1-flash",
+  "operator": "intersect",
+  "group": "A",
+  "inputs": [
+   "a1_teapot.png",
+   "a2_typewriter.png"
+  ],
+  "prompt": "Distill and depict only the visual and conceptual qualities that ALL input images share in common, as a single new image.",
+  "ok": true,
+  "status": 200,
+  "attempts": [
+   {
+    "status": 200,
+    "elapsed": 127.3
+   }
+  ],
+  "error": null
+ }
+]

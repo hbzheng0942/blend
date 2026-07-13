@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.expo/
+.DS_Store
+*.log
+spike/outputs/
+spike/inputs/
+spike/inputs_small/
+spike/__pycache__/
+spike/calls.jsonl

@@ -1,0 +1,37 @@
+{
+  "name": "@blend/app",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start",
+    "web": "expo start --web",
+    "export:web": "expo export -p web",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@blend/core": "workspace:*",
+    "@blend/providers": "workspace:*",
+    "@blend/storage": "workspace:*",
+    "expo": "^57.0.4",
+    "expo-constants": "~57.0.3",
+    "expo-crypto": "~57.0.0",
+    "expo-file-system": "~57.0.0",
+    "expo-image-picker": "~57.0.2",
+    "expo-linking": "~57.0.2",
+    "expo-router": "~57.0.4",
+    "expo-status-bar": "~57.0.0",
+    "fflate": "^0.8.3",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.0",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "4.25.2",
+    "react-native-svg": "15.15.4",
+    "react-native-web": "^0.21.2",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17"
+  }
+}

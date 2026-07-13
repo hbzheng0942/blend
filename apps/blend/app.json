@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "blend",
+    "slug": "blend",
+    "version": "0.1.0",
+    "scheme": "blend",
+    "orientation": "default",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "platforms": [
+      "ios",
+      "web"
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

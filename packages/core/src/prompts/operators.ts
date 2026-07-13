@@ -1,0 +1,63 @@
+import type { OperatorId } from "../types";
+
+/**
+ * 操作符 prompt 骨架。
+ * inject 使用 spike S1 验证过的 v2 强化版（原版会被模型理解为"放进场景"，
+ * 见 docs/spike-results.md §3）；subtract/intersect 的静态骨架 fail，
+ * 仅作 DIRECTOR_ONLY_OPERATORS 的兜底文案，实际必须由 director 出 prompt。
+ */
+export const OPERATOR_PROMPTS: Record<OperatorId, string> = {
+  fuse:
+    "Seamlessly fuse all subjects into one single coherent new object/creature, " +
+    "blending their key visual features equally.",
+  inject:
+    "Recreate the object from image 1 as if it were physically manufactured out of " +
+    "the material shown in image 2. Keep the exact shape, proportions and silhouette " +
+    "of image 1's object, but its entire surface must be made of image 2's material " +
+    "with its color, texture and finish. Plain studio background. Do not place the " +
+    "object inside a scene or landscape.",
+  subtract:
+    "Take image 1 and remove/strip away all visual characteristics that resemble image 2.",
+  intersect:
+    "Distill and depict only the visual and conceptual qualities that ALL input images " +
+    "share in common, as a single new image.",
+  absorb:
+    "Image 1 is the dominant host; embed fragments and details of the other images " +
+    "into its surface and structure.",
+};
+
+export interface OperatorMeta {
+  id: OperatorId;
+  symbol: string;
+  nameZh: string;
+  nameEn: string;
+  /** UI 提示：inject 的第二要素用材质图效果最佳（spike 结论） */
+  hint?: string;
+}
+
+/**
+ * 仅在 VLM director 出 prompt 时语义达标的操作符（spike 静态骨架 fail，
+ * director 翻案实测 pass：spike/outputs/rescue_*.png）。
+ * director 不可用/失败时这些操作符必须报错，不得回退静态骨架。
+ */
+export const DIRECTOR_ONLY_OPERATORS: ReadonlySet<OperatorId> = new Set(["subtract", "intersect"]);
+
+export const OPERATORS: OperatorMeta[] = [
+  { id: "fuse", symbol: "⊕", nameZh: "融合", nameEn: "Fuse" },
+  {
+    id: "inject", symbol: "→", nameZh: "注入", nameEn: "Inject",
+    hint: "第二个要素放质感/氛围强的图（材质、生物、星空都行）；两个刚性人造物之间不稳定",
+  },
+  {
+    id: "subtract", symbol: "⊖", nameZh: "相减", nameEn: "Subtract",
+    hint: "从第一个要素中剥离/反转后者的特征（由导演模型解读，需在线）",
+  },
+  {
+    id: "intersect", symbol: "∩", nameZh: "交集", nameEn: "Intersect",
+    hint: "蒸馏所有要素的共同气质，炼出全新之物（由导演模型解读，需在线）",
+  },
+  { id: "absorb", symbol: "⊃", nameZh: "吞噬", nameEn: "Absorb" },
+];
+
+/** provider 层可按模型注册 prompt 变体覆盖默认骨架。 */
+export type OperatorPromptOverrides = Partial<Record<OperatorId, string>>;
