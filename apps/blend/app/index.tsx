@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { exportTreeToBlendFile, importBlendFile, pickBlendFile } from "@/blendfile";
-import { importRecipeCode } from "@/recipecode";
+import { importRecipeCode, importRecipePlan } from "@/recipecode";
+import { SAMPLE_RECIPES } from "@/samples";
 import { hasBuiltinChannel, useBlend } from "@/store";
 import { display, kicker, theme } from "@/theme";
 
 export default function TreeList() {
-  const { trees, refreshTrees, createTree, deleteTree, apiKey } = useBlend();
+  const { trees, refreshTrees, createTree, deleteTree, apiKey, providerChoice, modelId, geminiKey } = useBlend();
   const router = useRouter();
   const [importMsg, setImportMsg] = useState("");
   const [showCodeInput, setShowCodeInput] = useState(false);
@@ -49,15 +50,22 @@ export default function TreeList() {
         <Text style={styles.heroSub}>投入图像，熔炼新物种。每一炉都是一部血统志。</Text>
       </View>
 
-      {!apiKey && !hasBuiltinChannel() && (
-        <Link href="/settings" asChild>
-          <Pressable style={styles.banner}>
-            <Text style={styles.bannerText}>
-              尚未配置 Agnes API key · 免费注册 30 秒，key 只存在本地 →
-            </Text>
-          </Pressable>
-        </Link>
-      )}
+      {/* 引擎状态条：型号 + key 来源一目了然，点击进设置 */}
+      <Link href="/settings" asChild>
+        <Pressable style={styles.engineStrip}>
+          <Text style={styles.engineText}>
+            ⚙︎ 引擎：{providerChoice === "gemini" ? "Gemini" : modelId}
+            {providerChoice === "gemini"
+              ? geminiKey ? " · 自备 key" : " · ⚠️ 未配置 key"
+              : apiKey
+                ? " · 自备 key 直连"
+                : hasBuiltinChannel()
+                  ? " · 共用免费通道（高峰会排队，建议 30 秒注册自己的免费 key）"
+                  : " · ⚠️ 未配置 key"}
+          </Text>
+          <Text style={{ color: theme.textFaint, fontSize: 12 }}>设置 →</Text>
+        </Pressable>
+      </Link>
 
       <View style={{ flexDirection: "row", gap: 10 }}>
         <Pressable
@@ -76,6 +84,10 @@ export default function TreeList() {
           <Text style={{ color: theme.textDim, fontSize: 13 }}>🧬 配方码</Text>
         </Pressable>
       </View>
+      <Text style={styles.entryHint}>
+        .blend = 完整谱系存档（含全部图片，备份/换设备用）· 配方码 = 只含配方不含图的短码，
+        拿到别人的码后用你自己的图重走一遍，看会炼出什么不同的东西
+      </Text>
       {showCodeInput && (
         <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
           <TextInput
@@ -102,8 +114,40 @@ export default function TreeList() {
         data={trees}
         keyExtractor={(t) => t.id}
         contentContainerStyle={{ gap: 10, paddingVertical: 14 }}
+        ListHeaderComponent={
+          trees.length > 0 ? (
+            <Text style={[kicker(theme.textFaint), { marginBottom: 4 }]}>
+              我的谱系 · 仅存于本机浏览器
+            </Text>
+          ) : null
+        }
         ListEmptyComponent={
-          <Text style={styles.empty}>图鉴还空着。扔几张图进炉，看看会炼出什么鬼。</Text>
+          <View style={{ gap: 14, marginTop: 24 }}>
+            <Text style={styles.empty}>
+              这里是你的私人图鉴（所有数据只存在本机浏览器）。{"\n"}
+              玩法：① 扔进 2 张以上的图 → ② 选一个融合操作符开炉抽卡 → ③ 选中意的入谱，
+              继续往上叠图、分叉、合并，长成一棵血统树。
+            </Text>
+            <Text style={[kicker(theme.textFaint), { textAlign: "center" }]}>
+              或者，从一份案例配方开始
+            </Text>
+            {SAMPLE_RECIPES.map((s) => (
+              <Pressable
+                key={s.title}
+                style={styles.sampleCard}
+                onPress={async () => {
+                  const tree = await importRecipePlan(s.plan);
+                  router.push(`/tree/${tree.id}`);
+                }}
+              >
+                <Text style={[display(15)]}>{s.title}</Text>
+                <Text style={{ color: theme.textDim, fontSize: 12, marginTop: 4 }}>{s.desc}</Text>
+                <Text style={{ color: theme.textFaint, fontSize: 11, marginTop: 6 }}>
+                  点击开始 · 用你自己的图重演绎这条配方 →
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         }
         renderItem={({ item, index }) => (
           <View style={styles.card}>
@@ -158,7 +202,18 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: theme.border, paddingHorizontal: 12, paddingVertical: 10,
     fontSize: 13,
   },
-  empty: { color: theme.textFaint, textAlign: "center", marginTop: 48, lineHeight: 22 },
+  empty: { color: theme.textFaint, textAlign: "center", lineHeight: 22 },
+  engineStrip: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    backgroundColor: theme.panel, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10,
+    borderWidth: 1, borderColor: theme.border, marginTop: 12,
+  },
+  engineText: { color: theme.textDim, fontSize: 12, flex: 1, marginRight: 8 },
+  entryHint: { color: theme.textFaint, fontSize: 11, lineHeight: 17, marginTop: 8 },
+  sampleCard: {
+    backgroundColor: theme.panel, borderRadius: 10, padding: 16,
+    borderWidth: 1, borderColor: theme.border, borderStyle: "dashed",
+  },
   card: {
     flexDirection: "row", alignItems: "center", gap: 14,
     backgroundColor: theme.panel, borderRadius: 10, padding: 16,

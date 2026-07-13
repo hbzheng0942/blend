@@ -52,7 +52,10 @@ export async function exportRecipeCode(treeId: string, nodeId: string): Promise<
  * 用户在锻造台按 plan 指引投入自己的图逐步重演绎（"同一配方不同结果"）。
  */
 export async function importRecipeCode(code: string): Promise<Tree> {
-  const plan = decodeRecipeCode(code);
+  return importRecipePlan(decodeRecipeCode(code));
+}
+
+export async function importRecipePlan(plan: RecipePlan): Promise<Tree> {
   const now = Date.now();
   const tree: Tree = {
     id: uuid(),

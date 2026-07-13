@@ -49,8 +49,9 @@ export default function Settings() {
         <Text style={styles.h}>Agnes API Key{hasBuiltinChannel() ? "（可选）" : ""}</Text>
         <Text style={styles.p}>
           {hasBuiltinChannel()
-            ? "默认走内置免费通道，无需配置。想直连 Agnes 官方（不与他人共享限额）可自填 key：" +
-              "platform.agnes-ai.com → API Keys，免费注册、不绑卡，key 只存在你浏览器本地。"
+            ? "默认走内置免费通道，无需配置即可开炉——但通道是所有人共用的，高峰期会排队。" +
+              "强烈建议花 30 秒注册自己的免费 key（platform.agnes-ai.com → API Keys，不绑卡）：" +
+              "独享限额、直连 Agnes、key 只存在你浏览器本地。"
             : "免费注册、不绑卡：platform.agnes-ai.com → API Keys。key 只存在你浏览器本地，" +
               "请求直连 Agnes，不经过任何第三方服务器。"}
         </Text>
