@@ -50,6 +50,12 @@ export default function Forge() {
     return new Set(p.capabilities.supportedOperators);
   }, [modelId, providerChoice]);
 
+  // 画布只显示真正入炉过的要素（上传后没用就删掉的不留痕）
+  const canvasElements = useMemo(() => {
+    const used = new Set(nodes.flatMap((n) => n.recipe.elementIds));
+    return elements.filter((e) => used.has(e.id));
+  }, [nodes, elements]);
+
   const forging = status.phase === "forging";
   const selectedNodes = selectedIds
     .map((sid) => nodes.find((n) => n.id === sid))
@@ -136,7 +142,7 @@ export default function Forge() {
         <View style={styles.canvasWrap}>
           <LineageCanvas
             nodes={nodes}
-            elements={elements}
+            elements={canvasElements}
             selectedIds={selectedIds}
             onToggleNode={toggleNode}
             layoutOverrides={tree.canvasLayout}
@@ -239,16 +245,43 @@ export default function Forge() {
               </View>
             ) : null;
           })}
-          {slotElementIds.map((eid) => {
+          {slotElementIds.map((eid, idx) => {
             const el = elements.find((e) => e.id === eid);
             return el ? (
-              <Pressable
-                key={eid}
-                onPress={() => setSlotElementIds((ids) => ids.filter((x) => x !== eid))}
-              >
-                <HashImage hash={el.imageHash} size={72} />
-                <Text style={styles.slotLabel}>点击移除</Text>
-              </Pressable>
+              <View key={eid} style={{ alignItems: "center" }}>
+                <Pressable onPress={() => setSlotElementIds((ids) => ids.filter((x) => x !== eid))}>
+                  <HashImage hash={el.imageHash} size={72} />
+                  <Text style={styles.slotLabel}>点击移除</Text>
+                </Pressable>
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 2 }}>
+                  <Pressable
+                    hitSlop={6}
+                    disabled={idx === 0}
+                    onPress={() =>
+                      setSlotElementIds((ids) => {
+                        const next = [...ids];
+                        [next[idx - 1], next[idx]] = [next[idx]!, next[idx - 1]!];
+                        return next;
+                      })
+                    }
+                  >
+                    <Text style={{ color: idx === 0 ? theme.border : theme.textDim, fontSize: 13 }}>◀</Text>
+                  </Pressable>
+                  <Pressable
+                    hitSlop={6}
+                    disabled={idx === slotElementIds.length - 1}
+                    onPress={() =>
+                      setSlotElementIds((ids) => {
+                        const next = [...ids];
+                        [next[idx], next[idx + 1]] = [next[idx + 1]!, next[idx]!];
+                        return next;
+                      })
+                    }
+                  >
+                    <Text style={{ color: idx === slotElementIds.length - 1 ? theme.border : theme.textDim, fontSize: 13 }}>▶</Text>
+                  </Pressable>
+                </View>
+              </View>
             ) : null;
           })}
           <Pressable style={styles.addSlot} onPress={() => void addImages()}>
