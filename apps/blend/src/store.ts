@@ -82,6 +82,8 @@ interface BlendState {
     operator: OperatorId;
     styleTags?: string[];
     userPromptExtra?: string;
+    /** 守序 0 ⇄ 1 混沌 */
+    chaos?: number;
     mode?: BlendMode;
     /** 追加候选到已有节点（重 roll） */
     intoNodeId?: string;
@@ -165,7 +167,7 @@ export const useBlend = create<BlendState>((set, get) => ({
   },
 
   async forge({
-    parentNodeIds, elementIds, operator, styleTags = [], userPromptExtra,
+    parentNodeIds, elementIds, operator, styleTags = [], userPromptExtra, chaos,
     mode = "forge", intoNodeId, candidates = 2,
   }) {
     const { tree, nodes, elements, apiKey, modelId, providerChoice, geminiKey } = get();
@@ -179,7 +181,7 @@ export const useBlend = create<BlendState>((set, get) => ({
       return null;
     }
 
-    const recipe: Recipe = { parentNodeIds, elementIds, operator, styleTags, userPromptExtra, mode };
+    const recipe: Recipe = { parentNodeIds, elementIds, operator, styleTags, userPromptExtra, chaos, mode };
 
     const nodeReader = { getNode: (nid: string) => nodes.find((n) => n.id === nid) };
     const elementHash = (eid: string) => {
@@ -250,7 +252,7 @@ export const useBlend = create<BlendState>((set, get) => ({
       concepts = await director
         .direct({
           operator, images: directorImages, count: candidates,
-          styleFragments: styleFragments(styleTags), userPromptExtra, signal,
+          styleFragments: styleFragments(styleTags), userPromptExtra, chaos, signal,
         })
         .catch(() => null);
     }

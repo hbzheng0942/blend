@@ -2,7 +2,7 @@
 
 import type { RecipePlan } from "./recipecode";
 
-export type OperatorId = "fuse" | "inject" | "subtract" | "intersect" | "absorb";
+export type OperatorId = "auto" | "fuse" | "inject" | "subtract" | "intersect" | "absorb";
 export type BlendMode = "forge" | "recast";
 
 /** 内容寻址的原始要素：图片以 sha256 存 blob store，全局去重。 */
@@ -23,6 +23,8 @@ export interface Recipe {
   operator: OperatorId;
   styleTags: string[];
   userPromptExtra?: string;
+  /** 守序 0 ⇄ 1 混沌（director 创意强度 + 采样温度），缺省 0.5 */
+  chaos?: number;
   /** forge=喂上轮输出图（信息衰减美学）；recast=全要素重新融合（高保真） */
   mode: BlendMode;
 }

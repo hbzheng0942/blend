@@ -22,7 +22,7 @@ export interface GeminiConfig {
 
 const CAPABILITIES: ProviderCapabilities = {
   maxInputImages: 14,
-  supportedOperators: ["fuse", "inject", "absorb", "subtract", "intersect"],
+  supportedOperators: ["auto", "fuse", "inject", "absorb", "subtract", "intersect"],
   maxResolution: "1024x1024",
 };
 

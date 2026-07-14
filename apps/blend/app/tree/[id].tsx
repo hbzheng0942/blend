@@ -9,6 +9,7 @@ import { createAgnesProvider, createGeminiProvider } from "@blend/providers";
 import { pickImageFiles } from "@/blobs";
 import { downloadOutputImage, exportLineagePoster, exportPoster } from "@/poster";
 import { exportRecipeCode } from "@/recipecode";
+import { ChaosSlider } from "@/components/ChaosSlider";
 import { ForgeRitual } from "@/components/ForgeRitual";
 import { HashImage } from "@/components/HashImage";
 import { LineageCanvas } from "@/components/LineageCanvas";
@@ -22,7 +23,8 @@ export default function Forge() {
     moveNode, status, modelId, apiKey, providerChoice,
   } = useBlend();
 
-  const [operator, setOperator] = useState<OperatorId>("fuse");
+  const [operator, setOperator] = useState<OperatorId>("auto");
+  const [chaos, setChaos] = useState(0.5);
   const [extra, setExtra] = useState("");
   const [slotElementIds, setSlotElementIds] = useState<string[]>([]);
   const [styleTags, setStyleTags] = useState<string[]>([]);
@@ -84,6 +86,7 @@ export default function Forge() {
       operator,
       styleTags,
       userPromptExtra: extra.trim() || undefined,
+      chaos,
       mode,
     });
     if (node) {
@@ -202,6 +205,7 @@ export default function Forge() {
                   operator: detailNode.recipe.operator,
                   styleTags: detailNode.recipe.styleTags,
                   userPromptExtra: detailNode.recipe.userPromptExtra,
+                  chaos: detailNode.recipe.chaos,
                   mode: detailNode.recipe.mode,
                   intoNodeId: detailNode.id,
                 })
@@ -331,6 +335,8 @@ export default function Forge() {
         {OPERATORS.find((o) => o.id === operator)?.hint && (
           <Text style={styles.hint}>💡 {OPERATORS.find((o) => o.id === operator)!.hint}</Text>
         )}
+
+        <ChaosSlider value={chaos} onChange={setChaos} />
 
         {/* 风格 tags（折叠式，最多 3 个） */}
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>

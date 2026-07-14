@@ -103,7 +103,7 @@ describe("agnes provider", () => {
     const p = provider(fetch);
     expect(p.capabilities.maxInputImages).toBe(6);
     expect(p.capabilities.supportedOperators).toEqual([
-      "fuse", "inject", "absorb", "subtract", "intersect",
+      "auto", "fuse", "inject", "absorb", "subtract", "intersect",
     ]);
   });
 });

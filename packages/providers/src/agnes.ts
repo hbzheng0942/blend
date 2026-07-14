@@ -30,12 +30,12 @@ export type AgnesModelId = "agnes-image-2.0-flash" | "agnes-image-2.1-flash";
 const CAPABILITIES: Record<AgnesModelId, ProviderCapabilities> = {
   "agnes-image-2.0-flash": {
     maxInputImages: 6,
-    supportedOperators: ["fuse", "inject", "absorb", "subtract", "intersect"],
+    supportedOperators: ["auto", "fuse", "inject", "absorb", "subtract", "intersect"],
     maxResolution: "1024x1024",
   },
   "agnes-image-2.1-flash": {
     maxInputImages: 6,
-    supportedOperators: ["fuse", "inject", "absorb", "subtract", "intersect"],
+    supportedOperators: ["auto", "fuse", "inject", "absorb", "subtract", "intersect"],
     maxResolution: "4K",
   },
 };

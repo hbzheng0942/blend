@@ -7,6 +7,10 @@ import type { OperatorId } from "../types";
  * 仅作 DIRECTOR_ONLY_OPERATORS 的兜底文案，实际必须由 director 出 prompt。
  */
 export const OPERATOR_PROMPTS: Record<OperatorId, string> = {
+  // auto 的静态兜底 = fuse（真正的结构选择由 director 完成）
+  auto:
+    "Seamlessly fuse all subjects into one single coherent new object/creature, " +
+    "blending their key visual features equally.",
   fuse:
     "Seamlessly fuse all subjects into one single coherent new object/creature, " +
     "blending their key visual features equally.",
@@ -44,24 +48,28 @@ export const DIRECTOR_ONLY_OPERATORS: ReadonlySet<OperatorId> = new Set(["subtra
 
 export const OPERATORS: OperatorMeta[] = [
   {
+    id: "auto", symbol: "✦", nameZh: "智能", nameEn: "Auto",
+    hint: "导演看图判断每张的类型（实体/材质/场景/氛围），自动选最合适的融合结构——不确定选哪个时用它",
+  },
+  {
     id: "fuse", symbol: "⊕", nameZh: "融合", nameEn: "Fuse",
-    hint: "所有图平等混血，炼成一个全新物种——最百搭的默认玩法",
+    hint: "适合：两个实体或生物。平等混血成一个全新物种；纹理/氛围图慎用（颜色会糊满全图）",
   },
   {
     id: "inject", symbol: "→", nameZh: "注入", nameEn: "Inject",
-    hint: "第一张图保形状，用后面图的材质/气质重新做一遍；第二个要素放质感强的图（材质、生物、星空都行）",
+    hint: "适合：实体 + 质感强的图（材质、生物、星空）。第一张保形状，用后面的材质重做一遍",
   },
   {
     id: "subtract", symbol: "⊖", nameZh: "相减", nameEn: "Subtract",
-    hint: "从第一个要素中剥离/反转后者的特征（由导演模型解读，需在线）",
+    hint: "适合：想从第一张里剥离/反转第二张特征的进阶玩法（由导演解读，需在线）",
   },
   {
     id: "intersect", symbol: "∩", nameZh: "交集", nameEn: "Intersect",
-    hint: "蒸馏所有要素的共同气质，炼出全新之物（由导演模型解读，需在线）",
+    hint: "适合：三张以上互不相干的图。蒸馏它们唯一的共同气质，炼出全新之物（由导演解读，需在线）",
   },
   {
     id: "absorb", symbol: "⊃", nameZh: "吞噬", nameEn: "Absorb",
-    hint: "第一张图当宿主保持原样，把其他图拆成碎片长进它的表面——比融合更保守，比注入更狂野",
+    hint: "适合：一个想保住的主体 + 若干配料图。宿主保持原样，配料拆成碎片长进它表面",
   },
 ];
 

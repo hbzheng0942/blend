@@ -30,6 +30,8 @@ export interface DirectRequest {
   userPromptExtra?: string;
   /** 期望方案数 = 候选数 */
   count: number;
+  /** 守序 0 ⇄ 1 混沌，缺省 0.5；同时驱动 brief 措辞与采样温度 */
+  chaos?: number;
   signal?: AbortSignal;
 }
 
@@ -58,12 +60,14 @@ export function createAgnesDirector(config: DirectorConfig): AgnesDirector {
       },
       ...req.images.map((url) => ({ type: "image_url", image_url: { url } })),
     ];
+    const chaos = req.chaos ?? 0.5;
     const body = {
       model: modelId,
-      temperature: 1.0,
+      // 守序 0.7 → 混沌 1.2
+      temperature: 0.7 + chaos * 0.5,
       max_tokens: 400 * req.count,
       messages: [
-        { role: "system", content: buildDirectorSystemPrompt(req.count) },
+        { role: "system", content: buildDirectorSystemPrompt(req.count, chaos) },
         { role: "user", content },
       ],
     };

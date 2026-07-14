@@ -19,6 +19,11 @@ export interface DirectorConcept {
 
 /** 每个操作符给 director 的意图陈述（比生图骨架更抽象，留出创作空间）。 */
 export const DIRECTOR_INTENTS: Record<OperatorId, string> = {
+  auto:
+    "AUTO: First silently classify each input (entity / creature / material / texture / " +
+    "scene / mood). Then choose the fusion structure that fits these inputs best — equal fuse, " +
+    "keep-form material inject, host absorbing fragments, or distilling a shared essence — " +
+    "and design the concepts accordingly. Pick the structure that will look best, not the flashiest.",
   fuse:
     "FUSE: merge all input subjects into one coherent new object/creature. " +
     "Decide deliberately which input contributes silhouette/anatomy, which contributes " +
@@ -38,19 +43,44 @@ export const DIRECTOR_INTENTS: Record<OperatorId, string> = {
     "absorbing fragments and details of the other subjects into its surface and structure.",
 };
 
-export function buildDirectorSystemPrompt(count: number): string {
+/** 守序 0 ⇄ 1 混沌：创意强度分三档措辞。 */
+function chaosDirective(chaos: number): string {
+  if (chaos < 0.34) {
+    return (
+      "- Creative register: FAITHFUL. Stay close to the inputs' original forms, proportions " +
+      "and palette; the fusion should feel like a clean, believable craft object. No " +
+      "reinterpretation, no scale changes."
+    );
+  }
+  if (chaos < 0.67) {
+    return (
+      "- Creative register: BALANCED. Build each concept around ONE clear creative idea. " +
+      "The result should feel natural and inevitable — creative, but never forced."
+    );
+  }
   return (
-    "You are a visionary creature/object designer for an image-fusion art tool. " +
+    "- Creative register: WILD. Bold reinterpretation encouraged: scale twists, unexpected " +
+    "function, poetic re-reading of the inputs. Still one coherent subject, not a collage."
+  );
+}
+
+export function buildDirectorSystemPrompt(count: number, chaos = 0.5): string {
+  return (
+    "You are a senior concept artist for an image-fusion art tool. " +
     `You are given input images and a fusion intent. Design ${count} DISTINCT fusion concepts.\n` +
     "Rules:\n" +
-    "- Each concept must make deliberate design choices; be surprising: use scale twists, " +
-    "unexpected function, or poetic reinterpretation. Avoid literal collage.\n" +
-    "- Concepts must differ clearly from each other in design direction.\n" +
+    "- Each concept makes deliberate design choices about what each input contributes. " +
+    "Concepts must differ clearly from each other in design direction.\n" +
+    chaosDirective(chaos) + "\n" +
+    "- Aesthetics: one clear focal subject; restrained palette anchored to the dominant " +
+    "input (the other inputs accent, not flood); one coherent light source; generous " +
+    "negative space. Never pile up elements — leave things out.\n" +
     "- Each concept gets a NAME in Chinese: 2-6 个字，言简意赅，可以带幽默感或反差萌" +
     "（如「章鱼茶壶」「深渊下午茶」），不要英文不要拼音。\n" +
     '- The "prompt" field must be a self-contained English image-generation prompt ' +
-    "(40-80 words), concrete and visual, describing the SINGLE fused subject, its " +
-    'materials, lighting and background. It must not reference "image 1/2".\n' +
+    "(30-60 words), concrete and visual, describing the SINGLE fused subject, its " +
+    'materials, lighting and background — written like a tight concept-art brief, ' +
+    'not an inventory. It must not reference "image 1/2".\n' +
     'Output STRICT JSON only: {"concepts":[{"name":"...","prompt":"..."}]}'
   );
 }
