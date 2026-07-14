@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput,
+  View, useWindowDimensions,
 } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import type { BlendMode, OperatorId } from "@blend/core";
@@ -23,6 +24,9 @@ export default function Forge() {
     moveNode, status, modelId, apiKey, providerChoice,
   } = useBlend();
 
+  const { width: winW, height: winH } = useWindowDimensions();
+  // 宽屏：输入流程在左、画布常驻右侧（画布不再把页面越撑越长）
+  const wide = winW >= 900;
   const [operator, setOperator] = useState<OperatorId>("auto");
   const [chaos, setChaos] = useState(0.5);
   const [extra, setExtra] = useState("");
@@ -104,9 +108,31 @@ export default function Forge() {
     );
   }
 
+  const canvasBlock = (viewportHeight?: number) =>
+    nodes.length > 0 || canvasElements.length > 0 ? (
+      <View style={[styles.canvasWrap, viewportHeight ? { flex: 1 } : null]}>
+        <LineageCanvas
+          nodes={nodes}
+          elements={canvasElements}
+          selectedIds={selectedIds}
+          onToggleNode={toggleNode}
+          layoutOverrides={tree.canvasLayout}
+          onMoveNode={(nid, pos) => void moveNode(nid, pos)}
+          viewportHeight={viewportHeight}
+        />
+        <Text style={styles.canvasHint}>
+          点选节点继续锻造 fork · 选两个合并 merge · 按住拖动整理位置 · 虚线为过时结果
+        </Text>
+      </View>
+    ) : null;
+
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.content}>
+    <View style={{ flex: 1, flexDirection: wide ? "row" : "column" }}>
       <Stack.Screen options={{ title: tree.title }} />
+      <ScrollView
+        style={[styles.page, wide && styles.leftPane]}
+        contentContainerStyle={styles.content}
+      >
       {/* ── 配方码重演绎指引 ── */}
       {tree.importedPlan && (
         <View style={styles.node}>
@@ -140,22 +166,8 @@ export default function Forge() {
         </View>
       )}
 
-      {/* ── DAG 谱系画布 ── */}
-      {(nodes.length > 0 || elements.length > 0) && (
-        <View style={styles.canvasWrap}>
-          <LineageCanvas
-            nodes={nodes}
-            elements={canvasElements}
-            selectedIds={selectedIds}
-            onToggleNode={toggleNode}
-            layoutOverrides={tree.canvasLayout}
-            onMoveNode={(nid, pos) => void moveNode(nid, pos)}
-          />
-          <Text style={styles.canvasHint}>
-            点选节点继续锻造 fork · 选两个合并 merge · 拖动节点整理画布 · 虚线为过时结果
-          </Text>
-        </View>
-      )}
+      {/* ── DAG 谱系画布（窄屏内联；宽屏在右栏常驻） ── */}
+      {!wide && canvasBlock()}
 
       {/* ── 选中节点详情：候选管理 ── */}
       {detailNode && (
@@ -442,13 +454,19 @@ export default function Forge() {
         )}
         {status.phase === "error" && <Text style={styles.err}>⚠️ {status.message}</Text>}
       </View>
-    </ScrollView>
+      </ScrollView>
+      {wide && <View style={styles.rightPane}>{canvasBlock(winH - 180)}</View>}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   page: { flex: 1 },
   content: { padding: 16, gap: 16, maxWidth: 980, width: "100%", alignSelf: "center" },
+  /** 宽屏左栏：输入流程，定宽可滚 */
+  leftPane: { maxWidth: 480, borderRightWidth: 1, borderColor: theme.border },
+  /** 宽屏右栏：画布常驻 */
+  rightPane: { flex: 1, padding: 16 },
   canvasWrap: {
     backgroundColor: theme.panel, borderRadius: 12, padding: 12,
     borderWidth: 1, borderColor: theme.border,

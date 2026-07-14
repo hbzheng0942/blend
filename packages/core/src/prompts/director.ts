@@ -43,44 +43,48 @@ export const DIRECTOR_INTENTS: Record<OperatorId, string> = {
     "absorbing fragments and details of the other subjects into its surface and structure.",
 };
 
-/** 守序 0 ⇄ 1 混沌：创意强度分三档措辞。 */
+/** 守序 0 ⇄ 1 混沌：创意强度 + 品味守则的松紧，随档位一起变。 */
 function chaosDirective(chaos: number): string {
   if (chaos < 0.34) {
     return (
       "- Creative register: FAITHFUL. Stay close to the inputs' original forms, proportions " +
-      "and palette; the fusion should feel like a clean, believable craft object. No " +
-      "reinterpretation, no scale changes."
+      "and palette; the fusion should feel like a clean, believable craft object.\n" +
+      "- Taste: keep a single focal subject, palette led by the dominant input, coherent " +
+      "lighting. Apply these strictly."
     );
   }
   if (chaos < 0.67) {
     return (
-      "- Creative register: BALANCED. Build each concept around ONE clear creative idea. " +
-      "The result should feel natural and inevitable — creative, but never forced."
+      "- Creative register: BALANCED. Build each concept around ONE clear creative idea; " +
+      "natural and inevitable, never forced.\n" +
+      "- Taste principles (guides, not shackles): a clear focal subject; a palette led by " +
+      "one input; coherent lighting. Bend them when the idea earns it."
     );
   }
   return (
-    "- Creative register: WILD. Bold reinterpretation encouraged: scale twists, unexpected " +
-    "function, poetic re-reading of the inputs. Still one coherent subject, not a collage."
+    "- Creative register: WILD. Bold reinterpretation welcome — scale twists, unexpected " +
+    "function, poetic re-reading. Follow the idea wherever it goes; the only hard rule is " +
+    "one coherent subject, not a collage."
   );
 }
 
 export function buildDirectorSystemPrompt(count: number, chaos = 0.5): string {
   return (
-    "You are a senior concept artist for an image-fusion art tool. " +
-    `You are given input images and a fusion intent. Design ${count} DISTINCT fusion concepts.\n` +
+    "You are the art director of an image-fusion tool. The image model will see BOTH your " +
+    "brief and the original input images, so do not describe everything — set the direction " +
+    "and the key fusion decisions, and leave room for the image model to pull details from " +
+    `the images itself. Design ${count} DISTINCT fusion concepts.\n` +
     "Rules:\n" +
-    "- Each concept makes deliberate design choices about what each input contributes. " +
-    "Concepts must differ clearly from each other in design direction.\n" +
+    "- Each concept states clearly what each input contributes (form / material / mood). " +
+    "Concepts must differ from each other in direction.\n" +
     chaosDirective(chaos) + "\n" +
-    "- Aesthetics: one clear focal subject; restrained palette anchored to the dominant " +
-    "input (the other inputs accent, not flood); one coherent light source; generous " +
-    "negative space. Never pile up elements — leave things out.\n" +
+    "- If a user direction is provided, it IS the creative core: keep its intent faithfully " +
+    "and only refine it into an effective brief — do not override it or bolt on unrelated ideas.\n" +
     "- Each concept gets a NAME in Chinese: 2-6 个字，言简意赅，可以带幽默感或反差萌" +
     "（如「章鱼茶壶」「深渊下午茶」），不要英文不要拼音。\n" +
-    '- The "prompt" field must be a self-contained English image-generation prompt ' +
-    "(30-60 words), concrete and visual, describing the SINGLE fused subject, its " +
-    'materials, lighting and background — written like a tight concept-art brief, ' +
-    'not an inventory. It must not reference "image 1/2".\n' +
+    '- The "prompt" field: a concise English art-direction brief (20-45 words) — subject, ' +
+    "the fusion decisions, mood and lighting. No inventories of fine details. " +
+    'It must not reference "image 1/2".\n' +
     'Output STRICT JSON only: {"concepts":[{"name":"...","prompt":"..."}]}'
   );
 }
@@ -99,7 +103,7 @@ export function buildDirectorUserText(args: {
     parts.push("Mandatory style constraints (weave into every concept): " + args.styleFragments.join("; ") + ".");
   }
   const extra = args.userPromptExtra?.trim();
-  if (extra) parts.push("User's extra wish (honor it): " + extra);
+  if (extra) parts.push("User direction (the creative core — refine it, don't override it): " + extra);
   return parts.join("\n");
 }
 

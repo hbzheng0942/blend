@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import { PanResponder, Pressable, ScrollView, Text, View } from "react-native";
+import { PanResponder, ScrollView, Text, View } from "react-native";
+import type { ReactNode } from "react";
 import Svg, { Path } from "react-native-svg";
 import type { BlendNode, Element } from "@blend/core";
 import { OPERATORS, isNodeStale } from "@blend/core";
@@ -16,6 +17,49 @@ const V_GAP = 56;
 const PAD = 20;
 
 interface Pos { x: number; y: number }
+
+/**
+ * 可拖拽节点卡：自带手势（位移 ≤6px 算点选，>6px 算拖动）。
+ * 之前把 PanResponder 挂在 Pressable 上，web 端 move 事件被 Pressable
+ * 吞掉导致拖拽完全不生效——改为 View + 自判 tap/drag。
+ */
+function NodeCard({ onTap, onDrag, onDrop, style, children }: {
+  onTap: () => void;
+  onDrag: (dx: number, dy: number) => void;
+  onDrop: (dx: number, dy: number) => void;
+  style: object;
+  children: ReactNode;
+}) {
+  const refs = useRef({ onTap, onDrag, onDrop, dragging: false });
+  refs.current.onTap = onTap;
+  refs.current.onDrag = onDrag;
+  refs.current.onDrop = onDrop;
+
+  const pan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: (_e, g) => {
+        if (!refs.current.dragging && Math.hypot(g.dx, g.dy) > 6) refs.current.dragging = true;
+        if (refs.current.dragging) refs.current.onDrag(g.dx, g.dy);
+      },
+      onPanResponderRelease: (_e, g) => {
+        if (refs.current.dragging) refs.current.onDrop(g.dx, g.dy);
+        else refs.current.onTap();
+        refs.current.dragging = false;
+      },
+      onPanResponderTerminate: (_e, g) => {
+        if (refs.current.dragging) refs.current.onDrop(g.dx, g.dy);
+        refs.current.dragging = false;
+      },
+    }),
+  ).current;
+
+  return (
+    <View {...pan.panHandlers} style={style}>
+      {children}
+    </View>
+  );
+}
 
 function layout(nodes: BlendNode[], elements: Element[], overrides: Record<string, Pos>) {
   const level = new Map<string, number>();
@@ -67,7 +111,7 @@ function layout(nodes: BlendNode[], elements: Element[], overrides: Record<strin
 }
 
 export function LineageCanvas({
-  nodes, elements, selectedIds, onToggleNode, layoutOverrides = {}, onMoveNode,
+  nodes, elements, selectedIds, onToggleNode, layoutOverrides = {}, onMoveNode, viewportHeight,
 }: {
   nodes: BlendNode[];
   elements: Element[];
@@ -76,42 +120,15 @@ export function LineageCanvas({
   /** tree.canvasLayout：手动拖拽过的节点位置 */
   layoutOverrides?: Record<string, Pos>;
   onMoveNode?: (id: string, pos: Pos) => void;
+  /** 画布视口高度（宽屏分栏时由外部撑满右栏） */
+  viewportHeight?: number;
 }) {
   // 拖拽中的实时偏移（松手后经 onMoveNode 持久化到 canvasLayout）
   const [drag, setDrag] = useState<{ id: string; dx: number; dy: number } | null>(null);
-  const dragRef = useRef<{ id: string; base: Pos } | null>(null);
 
   const { elPos, nodePos, width, height } = useMemo(
     () => layout(nodes, elements, layoutOverrides),
     [nodes, elements, layoutOverrides],
-  );
-  const nodePosRef = useRef(nodePos);
-  nodePosRef.current = nodePos;
-
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        // 位移超阈值才接管手势，普通点按仍由 Pressable 处理
-        onMoveShouldSetPanResponder: (_e, g) =>
-          !!onMoveNode && !!dragRef.current && Math.hypot(g.dx, g.dy) > 6,
-        onPanResponderMove: (_e, g) => {
-          const d = dragRef.current;
-          if (d) setDrag({ id: d.id, dx: g.dx, dy: g.dy });
-        },
-        onPanResponderRelease: (_e, g) => {
-          const d = dragRef.current;
-          if (d && onMoveNode && Math.hypot(g.dx, g.dy) > 6) {
-            onMoveNode(d.id, { x: Math.max(0, d.base.x + g.dx), y: Math.max(0, d.base.y + g.dy) });
-          }
-          dragRef.current = null;
-          setDrag(null);
-        },
-        onPanResponderTerminate: () => {
-          dragRef.current = null;
-          setDrag(null);
-        },
-      }),
-    [onMoveNode],
   );
   const reader = useMemo(() => ({ getNode: (id: string) => nodes.find((n) => n.id === id) }), [nodes]);
 
@@ -148,7 +165,10 @@ export function LineageCanvas({
   }
 
   return (
-    <ScrollView horizontal style={{ maxHeight: Math.min(height, 460) }}>
+    <ScrollView
+      horizontal
+      style={viewportHeight ? { height: viewportHeight } : { maxHeight: Math.min(height, 460) }}
+    >
       <ScrollView>
         <View style={{ width, height }}>
           <Svg width={width} height={height} style={{ position: "absolute" }}>
@@ -181,11 +201,14 @@ export function LineageCanvas({
             const canonical = n.outputs.find((o) => o.id === n.canonicalOutputId);
             const op = OPERATORS.find((o) => o.id === n.recipe.operator);
             return (
-              <Pressable
+              <NodeCard
                 key={n.id}
-                onPress={() => onToggleNode(n.id)}
-                onPressIn={() => { dragRef.current = { id: n.id, base }; }}
-                {...panResponder.panHandlers}
+                onTap={() => onToggleNode(n.id)}
+                onDrag={(dx, dy) => setDrag({ id: n.id, dx, dy })}
+                onDrop={(dx, dy) => {
+                  setDrag(null);
+                  onMoveNode?.(n.id, { x: Math.max(0, base.x + dx), y: Math.max(0, base.y + dy) });
+                }}
                 style={{
                   position: "absolute", left: p.x, top: p.y, width: CARD_W,
                   zIndex: drag?.id === n.id ? 10 : undefined,
@@ -195,7 +218,8 @@ export function LineageCanvas({
                   borderColor: selected ? theme.ember : stale ? theme.steelDim : theme.border,
                   borderStyle: stale ? "dashed" : "solid",
                   opacity: stale ? 0.75 : 1,
-                }}
+                  cursor: "grab",
+                } as object}
               >
                 {canonical
                   ? <HashImage hash={canonical.imageHash} size={CARD_W - 12} />
@@ -206,7 +230,7 @@ export function LineageCanvas({
                 <Text style={{ ...kicker(stale ? theme.steel : theme.textFaint), fontSize: 8.5, marginTop: 2 }}>
                   {stale ? "Stale · 过时" : `${n.outputs.length} takes${n.recipe.mode === "recast" ? " · recast" : ""}`}
                 </Text>
-              </Pressable>
+              </NodeCard>
             );
           })}
         </View>
