@@ -29,7 +29,7 @@ describe("agnes director", () => {
       expect(body.model).toBe("agnes-2.0-flash");
       expect(body.enable_thinking).toBe(false);
       expect(body.temperature).toBe(0.35);
-      expect(body.max_tokens).toBe(1_000);
+      expect(body.max_tokens).toBe(650);
       expect(body.response_format).toEqual({ type: "json_object" });
       expect(body.messages[0].role).toBe("system");
       const content = body.messages[1].content;
@@ -48,12 +48,12 @@ describe("agnes director", () => {
     expect(r![0]!.name).toBe("Ceramic Cephalopod");
   });
 
-  it("HTTP 持续失败重试两次后放弃 → null（静默回退）", async () => {
+  it("HTTP 持续失败补一次重试后放弃 → null（静默回退）", async () => {
     const f = vi.fn().mockResolvedValue(new Response("boom", { status: 503 }));
     const d = createAgnesDirector({ apiKey: "k", fetchImpl: f as typeof fetch });
     const r = await d.direct({ operator: "fuse", images: [], styleFragments: [], count: 2 });
     expect(r).toBeNull();
-    expect(f).toHaveBeenCalledTimes(3);
+    expect(f).toHaveBeenCalledTimes(2);
   }, 15_000);
 
   it("HTTP 200 但正文非法 → 立即降级，不重复烧请求", async () => {
@@ -63,6 +63,17 @@ describe("agnes director", () => {
     expect(r).toBeNull();
     expect(f).toHaveBeenCalledOnce();
   });
+
+  it("详细结果区分限流与格式异常，避免 UI 全部误报离线", async () => {
+    const limitedFetch = vi.fn().mockResolvedValue(new Response("busy", { status: 429 }));
+    const limited = createAgnesDirector({ apiKey: "k", fetchImpl: limitedFetch });
+    expect(await limited.directDetailed({ operator: "fuse", images: [], styleFragments: [], count: 1 }))
+      .toEqual({ concepts: null, issue: "rate-limit" });
+
+    const malformed = createAgnesDirector({ apiKey: "k", fetchImpl: vi.fn().mockResolvedValue(chatResponse("not-json")) });
+    expect(await malformed.directDetailed({ operator: "fuse", images: [], styleFragments: [], count: 1 }))
+      .toEqual({ concepts: null, issue: "invalid-response" });
+  }, 10_000);
 
   it("自定义 baseUrl（内置 Worker 通道）", async () => {
     const f = vi.fn(async (url: RequestInfo | URL) => {

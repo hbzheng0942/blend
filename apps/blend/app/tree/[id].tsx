@@ -87,6 +87,7 @@ export default function Forge() {
     .map((nodeId) => nodes.find((node) => node.id === nodeId))
     .filter((node): node is BlendNode => !!node);
   const forging = status.phase === "forging";
+  const furnaceInputCount = activeParentNodes.length + slotElementIds.length;
   const isMerge = activeParentNodes.length >= 2;
   const canForge = !forging && (slotElementIds.length > 0 || activeParentNodes.length > 0);
   const focusedNode = nodes.find((node) => node.id === focusedNodeId) ?? nodes[nodes.length - 1] ?? null;
@@ -111,7 +112,7 @@ export default function Forge() {
       return;
     }
     setSlotElementIds((current) => [...current, ...addedIds]);
-    setNotice(`已投入 ${addedIds.length} 张图${source === "paste" ? " · 来自剪贴板" : ""}`);
+    setNotice(`新增 ${addedIds.length} 张素材${source === "paste" ? " · 来自剪贴板" : ""}`);
   }, [addElementFromBlob]);
 
   useEffect(() => {
@@ -298,7 +299,12 @@ export default function Forge() {
         </Pressable>
       </View>
 
-      {!!notice && <Text style={styles.notice}>● {notice}</Text>}
+      {furnaceInputCount > 0 && (
+        <Text style={styles.notice}>
+          ● 已投入 {furnaceInputCount} 张图{notice ? ` · ${notice}` : ""}
+        </Text>
+      )}
+      {!furnaceInputCount && !!notice && <Text style={styles.notice}>● {notice}</Text>}
 
       <Pressable onPress={() => setShowAlchemy((value) => !value)} style={styles.alchemyToggle}>
         <View>
@@ -354,13 +360,21 @@ export default function Forge() {
       )}
 
       {status.phase === "forging" ? (
-        <ForgeRitual symbol={OPERATORS.find((item) => item.id === operator)?.symbol ?? "⊕"} done={status.done} total={status.total} conceptNames={status.conceptNames} directorMode={status.directorMode} onAbort={cancelForge} />
+        <ForgeRitual
+          symbol={OPERATORS.find((item) => item.id === operator)?.symbol ?? "⊕"}
+          done={status.done}
+          total={status.total}
+          conceptNames={status.conceptNames}
+          directorMode={status.directorMode}
+          directorIssue={status.directorIssue}
+          onAbort={cancelForge}
+        />
       ) : (
         <Pressable disabled={!canForge} onPress={() => void doForge()} style={[styles.forgeBtn, !canForge && { opacity: 0.42 }]}>
           <View style={styles.forgeCore}><Text style={styles.forgeSymbol}>{isMerge ? "∞" : "✦"}</Text></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.forgeBtnText}>{isMerge ? "让两条血统发生碰撞" : "点火，让导演给出异变方案"}</Text>
-            <Text style={styles.forgeSub}>导演给几套就炼几套 · 离线时只炼一套</Text>
+            <Text style={styles.forgeSub}>导演给几套就炼几套 · 未返回合格方案时只炼一套</Text>
           </View>
           <Text style={styles.forgeArrow}>↗</Text>
         </Pressable>

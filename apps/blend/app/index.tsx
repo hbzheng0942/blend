@@ -9,27 +9,9 @@ import { display, kicker, theme } from "@/theme";
 import { OrganicBackdrop } from "@/components/OrganicBackdrop";
 import { LandingGenesis } from "@/components/LandingGenesis";
 import { PixelGalaxyEmbryo } from "@/components/PixelGalaxyEmbryo";
-
-const SEMANTIC_SPECIMENS = [
-  {
-    name: "鸣岁藤",
-    image: "/samples/semantic-clock-bonsai.jpg",
-    equation: "机械的急促 × 植物的缓慢",
-    payoff: "每长一圈年轮，就敲响一次。",
-  },
-  {
-    name: "风暴花",
-    image: "/samples/semantic-dandelion-grenade.jpg",
-    equation: "爆炸的触发 × 种子的繁衍",
-    payoff: "它受到威胁时，会爆种。",
-  },
-  {
-    name: "共鸣礁",
-    image: "/samples/semantic-jellyfish-piano.jpg",
-    equation: "漂浮的脉动 × 和弦的秩序",
-    payoff: "洋流拨动它，潮汐开始演奏。",
-  },
-] as const;
+import {
+  SHOWCASE_SPECIMENS, installShowcaseArchive, type ShowcaseSpecimen,
+} from "@/showcases";
 
 const HERO_SOL = [[0,-3],[-2,-2],[-1,-2],[0,-2],[1,-2],[2,-2],[-2,-1],[-1,-1],[0,-1],[1,-1],[2,-1],[-3,0],[-2,0],[-1,0],[0,0],[1,0],[2,0],[3,0],[-2,1],[-1,1],[0,1],[1,1],[2,1],[-2,2],[-1,2],[0,2],[1,2],[2,2],[0,3]] as const;
 const HERO_LUNA = [[-1,-3],[0,-3],[-2,-2],[-1,-2],[0,-2],[-3,-1],[-2,-1],[-1,-1],[-3,0],[-2,0],[-1,0],[-3,1],[-2,1],[-1,1],[-2,2],[-1,2],[0,2],[-1,3],[0,3]] as const;
@@ -60,6 +42,8 @@ export default function TreeList() {
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [codeInput, setCodeInput] = useState("");
   const [startingSolLuna, setStartingSolLuna] = useState(false);
+  const [selectedSpecimen, setSelectedSpecimen] = useState<ShowcaseSpecimen | null>(null);
+  const [openingSpecimen, setOpeningSpecimen] = useState<"archive" | "replay" | null>(null);
   const [introRun, setIntroRun] = useState(0);
   const [showIntro, setShowIntro] = useState(
     () => typeof window === "undefined" || window.sessionStorage.getItem("blend-genesis-seen") !== "1",
@@ -115,14 +99,135 @@ export default function TreeList() {
     }
   }
 
+  async function openSpecimenArchive(specimen: ShowcaseSpecimen) {
+    if (openingSpecimen) return;
+    setOpeningSpecimen("archive");
+    try {
+      const tree = await installShowcaseArchive(specimen);
+      await refreshTrees();
+      setSelectedSpecimen(null);
+      router.push(`/tree/${tree.id}`);
+    } catch (error) {
+      setImportMsg("⚠️ " + (error as Error).message);
+      setOpeningSpecimen(null);
+    }
+  }
+
+  async function replaySpecimen(specimen: ShowcaseSpecimen) {
+    if (openingSpecimen) return;
+    setOpeningSpecimen("replay");
+    try {
+      const tree = await createTree(`${specimen.name} · 重炼实验`);
+      await loadTree(tree.id);
+      for (const input of specimen.inputs) {
+        const response = await fetch(input.image);
+        if (!response.ok) throw new Error("案例原料读取失败");
+        await addElementFromBlob(await response.blob());
+      }
+      setSelectedSpecimen(null);
+      router.push(`/tree/${tree.id}`);
+    } catch (error) {
+      setImportMsg("⚠️ " + (error as Error).message);
+      setOpeningSpecimen(null);
+    }
+  }
+
   useEffect(() => {
     void refreshTrees();
   }, [refreshTrees]);
+
+  useEffect(() => {
+    if (!selectedSpecimen || typeof window === "undefined") return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedSpecimen(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedSpecimen]);
 
   return (
     <View style={styles.shell}>
       <Stack.Screen options={{ headerShown: false }} />
       {showIntro && <LandingGenesis key={introRun} force={introRun > 0} onFinish={() => setShowIntro(false)} />}
+      {selectedSpecimen && (
+        <View style={styles.caseOverlay}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="关闭案例档案"
+            onPress={() => setSelectedSpecimen(null)}
+            style={styles.caseBackdrop}
+          />
+          <View style={styles.caseSheet}>
+            <View style={styles.caseTopline}>
+              <View>
+                <Text style={kicker(theme.spore)}>CASE FILE / {selectedSpecimen.id.toUpperCase()}</Text>
+                <Text style={styles.caseTitle}>{selectedSpecimen.name}</Text>
+              </View>
+              <Pressable onPress={() => setSelectedSpecimen(null)} hitSlop={10} style={styles.caseClose}>
+                <Text style={display(17, theme.textDim)}>×</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.caseLineage}>
+              {selectedSpecimen.inputs.map((input, index) => (
+                <View key={input.label} style={styles.caseInputWrap}>
+                  <View style={styles.caseInputFrame}>
+                    <Image source={{ uri: input.image }} resizeMode="contain" style={styles.caseInputImage} />
+                    <Text style={styles.caseNodeId}>{String.fromCharCode(65 + index)}</Text>
+                  </View>
+                  <Text style={styles.caseInputName}>{input.label}</Text>
+                  <Text style={styles.caseInputEssence}>{input.essence}</Text>
+                </View>
+              ))}
+              <View style={styles.caseMutation}>
+                <Text style={styles.caseMutationMark}>×</Text>
+                <Text style={kicker(theme.textFaint)}>CHAOS {Math.round(selectedSpecimen.chaos * 100)}</Text>
+                <Text style={styles.caseMutationArrow}>→</Text>
+              </View>
+              <View style={styles.caseOutputWrap}>
+                <View style={styles.caseOutputFrame}>
+                  <Image source={{ uri: selectedSpecimen.image }} resizeMode="contain" style={styles.caseOutputImage} />
+                  <Text style={styles.caseOutputLabel}>C / GOLD TARGET</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.caseStoryRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.caseEquation}>◈ {selectedSpecimen.equation}</Text>
+                <Text style={styles.caseMechanism}>{selectedSpecimen.mechanism}</Text>
+              </View>
+              <View style={styles.caseProvenance}>
+                <Text style={kicker(theme.textDim)}>PROVENANCE / 来源</Text>
+                <Text style={styles.caseProvenanceText}>
+                  真实输入 + 真实模型生成。它是内部基准模型产出的 Gold target，不是 Agnes 出炉记录。
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.caseActions}>
+              <Pressable
+                disabled={!!openingSpecimen}
+                onPress={() => void openSpecimenArchive(selectedSpecimen)}
+                style={[styles.casePrimaryAction, !!openingSpecimen && { opacity: 0.5 }]}
+              >
+                <Text style={styles.casePrimaryActionText}>
+                  {openingSpecimen === "archive" ? "正在安装档案…" : "打开完整谱系 ↗"}
+                </Text>
+              </Pressable>
+              <Pressable
+                disabled={!!openingSpecimen}
+                onPress={() => void replaySpecimen(selectedSpecimen)}
+                style={[styles.caseSecondaryAction, !!openingSpecimen && { opacity: 0.5 }]}
+              >
+                <Text style={styles.caseSecondaryActionText}>
+                  {openingSpecimen === "replay" ? "正在投入原料…" : "拿这组原料重新炼一次"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
       <OrganicBackdrop />
       <View style={styles.homeNav}>
         <Text style={display(14)}>BLEND™</Text>
@@ -239,17 +344,30 @@ export default function TreeList() {
           <Text style={styles.specimenNote}>混沌不是贴皮。它让一种事物的行为，活进另一种事物的规则里。</Text>
         </View>
         <View style={styles.specimenGrid}>
-          {SEMANTIC_SPECIMENS.map((specimen, index) => (
-            <View key={specimen.name} style={[styles.specimenCard, index === 1 && styles.specimenCardShift]}>
+          {SHOWCASE_SPECIMENS.map((specimen, index) => (
+            <Pressable
+              key={specimen.name}
+              accessibilityRole="button"
+              accessibilityLabel={`查看${specimen.name}案例谱系`}
+              onPress={() => { setOpeningSpecimen(null); setSelectedSpecimen(specimen); }}
+              style={({ pressed }) => [
+                styles.specimenCard,
+                index === 1 && styles.specimenCardShift,
+                pressed && styles.specimenCardPressed,
+              ]}
+            >
               <View style={styles.specimenFrame}>
-                <Image source={{ uri: specimen.image }} style={styles.specimenHeroImage} />
+                <Image source={{ uri: specimen.image }} resizeMode="contain" style={styles.specimenHeroImage} />
                 <Text style={styles.specimenIndex}>0{index + 1}</Text>
                 <Text style={styles.specimenStatus}>GOLD / LEAP</Text>
+                <View style={styles.specimenOpen}>
+                  <Text style={styles.specimenOpenText}>OPEN CASE ↗</Text>
+                </View>
               </View>
               <Text style={styles.specimenName}>{specimen.name}</Text>
               <Text style={styles.specimenEquation}>◈ {specimen.equation}</Text>
               <Text style={styles.specimenPayoff}>{specimen.payoff}</Text>
-            </View>
+            </Pressable>
           ))}
         </View>
       </View>
@@ -320,6 +438,68 @@ const noWrap = { whiteSpace: "nowrap" } as object;
 const styles = StyleSheet.create({
   shell: { minHeight: "100vh", backgroundColor: theme.bg } as object,
   scroll: { flex: 1 },
+  caseOverlay: {
+    position: "fixed", inset: 0, zIndex: 1000, alignItems: "center", justifyContent: "center",
+    padding: 24,
+  } as object,
+  caseBackdrop: { position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,.9)" } as object,
+  caseSheet: {
+    width: "100%", maxWidth: 1040, maxHeight: "92vh", overflow: "auto",
+    backgroundColor: "#050505", borderWidth: 1, borderColor: theme.textDim,
+    padding: 24, zIndex: 1, boxShadow: "0 24px 100px rgba(0,0,0,.9)",
+  } as object,
+  caseTopline: {
+    flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between",
+    borderBottomWidth: 1, borderColor: theme.border, paddingBottom: 16,
+  },
+  caseTitle: { ...display(34), marginTop: 8 },
+  caseClose: {
+    width: 38, height: 38, borderWidth: 1, borderColor: theme.borderStrong,
+    alignItems: "center", justifyContent: "center",
+  },
+  caseLineage: {
+    minHeight: 314, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 14, paddingVertical: 24, borderBottomWidth: 1, borderColor: theme.border,
+  },
+  caseInputWrap: { width: 132, gap: 5 },
+  caseInputFrame: {
+    width: 132, height: 132, position: "relative", borderWidth: 1, borderColor: theme.borderStrong,
+    backgroundColor: "#000", padding: 8,
+  },
+  caseInputImage: { width: "100%", height: "100%" },
+  caseNodeId: {
+    ...display(10, "#000"), position: "absolute", left: 7, top: 7,
+    backgroundColor: theme.text, width: 22, height: 22, textAlign: "center", paddingTop: 4,
+  },
+  caseInputName: { ...display(13), marginTop: 2 },
+  caseInputEssence: { ...kicker(theme.textFaint), fontSize: 8 },
+  caseMutation: { width: 76, alignItems: "center", gap: 9 },
+  caseMutationMark: { ...display(26, theme.textDim) },
+  caseMutationArrow: { ...display(26, theme.text) },
+  caseOutputWrap: { flex: 1, maxWidth: 440 },
+  caseOutputFrame: {
+    height: 270, position: "relative", borderWidth: 1, borderColor: theme.text,
+    backgroundColor: "#000", padding: 8,
+  },
+  caseOutputImage: { width: "100%", height: "100%" },
+  caseOutputLabel: {
+    ...kicker("#000"), position: "absolute", left: 12, bottom: 12, fontSize: 8,
+    backgroundColor: theme.text, paddingHorizontal: 8, paddingVertical: 5,
+  },
+  caseStoryRow: { flexDirection: "row", gap: 24, paddingVertical: 18 },
+  caseEquation: { ...display(17), marginBottom: 8 },
+  caseMechanism: { color: theme.textDim, fontSize: 12, lineHeight: 20, maxWidth: 600 },
+  caseProvenance: {
+    width: 300, borderLeftWidth: 1, borderColor: theme.borderStrong, paddingLeft: 16, gap: 7,
+  },
+  caseProvenanceText: { color: theme.textFaint, fontSize: 10, lineHeight: 17 },
+  caseActions: { flexDirection: "row", gap: 10, borderTopWidth: 1, borderColor: theme.border, paddingTop: 16 },
+  casePrimaryAction: { flex: 1, backgroundColor: theme.text, alignItems: "center", padding: 15 },
+  casePrimaryActionText: { ...display(13, "#050505") },
+  caseSecondaryAction: {
+    minWidth: 270, borderWidth: 1, borderColor: theme.borderStrong, alignItems: "center", padding: 15,
+  },
+  caseSecondaryActionText: { ...display(12, theme.textDim) },
   homeNav: { minHeight: 64, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, borderBottomWidth: 1, borderColor: theme.border, backgroundColor: "rgba(0,0,0,.88)" },
   page: { padding: 20, paddingBottom: 72, maxWidth: 1080, width: "100%", alignSelf: "center" },
   hero: {
@@ -351,12 +531,14 @@ const styles = StyleSheet.create({
   specimenLead: { ...display(24), lineHeight: 31 },
   specimenNote: { color: theme.textFaint, fontSize: 11, lineHeight: 18, maxWidth: 330, textAlign: "right" },
   specimenGrid: { flexDirection: "row", gap: 12, alignItems: "flex-start", minHeight: 390 },
-  specimenCard: { flex: 1, minWidth: 0 },
+  specimenCard: { flex: 1, minWidth: 0, cursor: "pointer", transition: "transform .18s ease, opacity .18s ease" } as object,
+  specimenCardPressed: { transform: [{ scale: 0.985 }], opacity: 0.82 },
   specimenCardShift: { marginTop: 28 },
   specimenFrame: {
     height: 270, borderWidth: 1, borderColor: theme.borderStrong, backgroundColor: "#000", overflow: "hidden",
+    padding: 8,
   },
-  specimenHeroImage: { width: "100%", height: "100%", objectFit: "cover" } as object,
+  specimenHeroImage: { width: "100%", height: "100%" },
   specimenIndex: {
     ...display(12, "#fff"), position: "absolute", left: 10, top: 8,
     backgroundColor: "rgba(0,0,0,.72)", paddingHorizontal: 6, paddingVertical: 3,
@@ -365,6 +547,11 @@ const styles = StyleSheet.create({
     ...kicker("#fff"), position: "absolute", right: 10, bottom: 8, fontSize: 8,
     backgroundColor: "rgba(0,0,0,.72)", paddingHorizontal: 6, paddingVertical: 4,
   },
+  specimenOpen: {
+    position: "absolute", left: 10, bottom: 8, backgroundColor: theme.text,
+    paddingHorizontal: 7, paddingVertical: 5,
+  },
+  specimenOpenText: { ...kicker("#050505"), fontSize: 7, letterSpacing: 1.1 },
   specimenName: { ...display(19), marginTop: 10 },
   specimenEquation: { ...kicker(theme.textDim), fontSize: 9, marginTop: 6 },
   specimenPayoff: { color: theme.textFaint, fontSize: 11, marginTop: 7, lineHeight: 18 },

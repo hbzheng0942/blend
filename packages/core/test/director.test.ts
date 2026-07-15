@@ -109,6 +109,12 @@ describe("parseDirectorConcepts", () => {
     expect(parseDirectorConcepts(text)).toEqual([CONCEPT]);
   });
 
+  it("兼容 Agnes 偶发省略 concepts 外壳或改用 results", () => {
+    expect(parseDirectorConcepts(JSON.stringify(CONCEPT))).toEqual([CONCEPT]);
+    expect(parseDirectorConcepts(JSON.stringify({ results: [CONCEPT] }))).toEqual([CONCEPT]);
+    expect(parseDirectorConcepts(JSON.stringify([CONCEPT]))).toEqual([CONCEPT]);
+  });
+
   it("过滤结构不合法的条目；全废时返回 null", () => {
     const mixed = JSON.stringify({ concepts: [{ name: "x", prompt: "too short" }, CONCEPT] });
     expect(parseDirectorConcepts(mixed)).toEqual([CONCEPT]);

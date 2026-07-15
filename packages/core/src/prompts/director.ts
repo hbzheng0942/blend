@@ -160,9 +160,18 @@ export function parseDirectorConcepts(text: string): DirectorConcept[] | null {
     s = s.slice(start, s.lastIndexOf("}") + 1);
   }
   try {
-    const parsed = JSON.parse(s) as { concepts?: unknown };
-    if (!Array.isArray(parsed.concepts)) return null;
-    const concepts = parsed.concepts.flatMap((c): DirectorConcept[] => {
+    const parsed = JSON.parse(s) as Record<string, unknown> | unknown[];
+    // Agnes 偶发忽略外层 concepts 包装，或改用 results；内容有效时不应被误判为“离线”。
+    const candidates = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed.concepts)
+        ? parsed.concepts
+        : Array.isArray(parsed.results)
+          ? parsed.results
+          : typeof parsed.prompt === "string"
+            ? [parsed]
+            : [];
+    const concepts = candidates.flatMap((c): DirectorConcept[] => {
       const name = (c as DirectorConcept).name;
       const prompt = (c as DirectorConcept).prompt;
       const equation = (c as DirectorConcept).equation;

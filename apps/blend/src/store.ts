@@ -11,7 +11,7 @@ import type { AgnesModelId } from "@blend/providers";
 import {
   FurnaceOverheatError, GEMINI_DEFAULT_MODEL, OPENAI_DEFAULT_BASE_URL,
   OPENAI_DEFAULT_IMAGE_MODEL, createAgnesDirector, createAgnesProvider,
-  createGeminiProvider, createOpenAICompatibleProvider,
+  createGeminiProvider, createOpenAICompatibleProvider, type DirectorIssue,
 } from "@blend/providers";
 import { blobDataUriScaled, storeBlob, storeDataUri } from "./blobs";
 import { getStorage } from "./storage";
@@ -57,6 +57,7 @@ export type ForgeStatus =
       /** director 方案名（拿到后即展示，等待期有盼头） */
       conceptNames?: string[];
       directorMode?: "vlm" | "fallback";
+      directorIssue?: DirectorIssue;
     }
   | { phase: "overheat"; cooldownSeconds: number }
   | { phase: "error"; message: string };
@@ -78,6 +79,16 @@ function localFallbackConcept(recipe: Recipe, staticPrompt: string): DirectorCon
       " Commit to one iconic silhouette and one decisive fusion idea. Create a single coherent " +
       "subject, never a side-by-side composition or loose collage.",
   };
+}
+
+function directorIssueMessage(issue?: DirectorIssue) {
+  switch (issue) {
+    case "timeout": return "导演响应超时";
+    case "rate-limit": return "公共导演正在排队";
+    case "upstream": return "导演上游暂不可用";
+    case "invalid-response": return "导演方案未通过格式校验";
+    default: return "导演连接中断";
+  }
 }
 
 interface BlendState {
@@ -290,20 +301,23 @@ export const useBlend = create<BlendState>((set, get) => ({
     const signal = forgeController.signal;
     set({ status: { phase: "forging", done: 0, total: candidates } });
     let directedConcepts: DirectorConcept[] | null = null;
+    let directorIssue: DirectorIssue | undefined;
     if (agnesChannel) {
       const director = createAgnesDirector(agnesChannel);
-      // director 只需看懂内容，512px 大幅压 payload（大图是 chat 端点断连主因）
+      // director 只需看懂内容，384px 进一步压 payload（大图是 chat 端点断连主因）
       const directorImages = await Promise.all(
         inputHashes
           .slice(0, provider.capabilities.maxInputImages)
-          .map((h) => blobDataUriScaled(h, 512)),
+          .map((h) => blobDataUriScaled(h, 384)),
       );
-      directedConcepts = await director
-        .direct({
+      const outcome = await director
+        .directDetailed({
           operator, images: directorImages, count: candidates,
           styleFragments: styleFragments(styleTags), userPromptExtra, chaos, signal,
         })
-        .catch(() => null);
+        .catch(() => ({ concepts: null, issue: "network" as const }));
+      directedConcepts = outcome.concepts;
+      directorIssue = outcome.issue;
     }
     if (signal.aborted) {
       set({ status: { phase: "idle" } });
@@ -312,7 +326,7 @@ export const useBlend = create<BlendState>((set, get) => ({
     // subtract/intersect 只有 director 出的 prompt 才语义达标（spike 翻案结论），
     // 回退静态骨架必然出废图 → 直接中止
     if (!directedConcepts && DIRECTOR_ONLY_OPERATORS.has(operator)) {
-      set({ status: { phase: "error", message: "此禁术需要导演出手，但导演暂时联系不上——稍后再试" } });
+      set({ status: { phase: "error", message: `此禁术需要导演出手，但${directorIssueMessage(directorIssue)}——稍后再试` } });
       return null;
     }
     // 不伪造候选数：导演只给几套就生成几套；导演失败则明确降级为一个本地方案。
@@ -325,7 +339,7 @@ export const useBlend = create<BlendState>((set, get) => ({
     const actualCandidates = concepts.length;
     const directorMode = conceptBatch.source;
     const conceptNames = concepts.map((concept) => concept.name);
-    set({ status: { phase: "forging", done: 0, total: actualCandidates, conceptNames, directorMode } });
+    set({ status: { phase: "forging", done: 0, total: actualCandidates, conceptNames, directorMode, directorIssue } });
 
     const seedBase = Date.now() % 2_000_000_000;
     const makeRunner = (candidateIndex: number) => {
@@ -370,7 +384,7 @@ export const useBlend = create<BlendState>((set, get) => ({
         const rest = get().nodes.filter((n) => n.id !== node!.id);
         set({
           nodes: [...rest, node].sort((a, b) => a.createdAt - b.createdAt),
-          status: { phase: "forging", done: outputs.length, total: actualCandidates, conceptNames, directorMode },
+          status: { phase: "forging", done: outputs.length, total: actualCandidates, conceptNames, directorMode, directorIssue },
         });
       });
       return persistQueue;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Platform, Pressable, Text, View } from "react-native";
 import { display, kicker, theme } from "@/theme";
+import type { DirectorIssue } from "@blend/providers";
 
 /** 锻造等待仪式：熔金脉动的操作符印记 + 轮换的炉语。撑住 50–90s 的常态生成延迟。 */
 
@@ -13,7 +14,15 @@ const FURNACE_LINES = [
   "冷却成形，即将出炉",
 ];
 
-export function ForgeRitual({ symbol, done, total, conceptNames, directorMode, onAbort }: {
+const DIRECTOR_ISSUE_LABEL: Record<DirectorIssue, string> = {
+  timeout: "导演响应超时",
+  "rate-limit": "公共导演正在排队",
+  upstream: "导演上游暂不可用",
+  network: "导演连接中断",
+  "invalid-response": "导演方案未通过格式校验",
+};
+
+export function ForgeRitual({ symbol, done, total, conceptNames, directorMode, directorIssue, onAbort }: {
   symbol: string;
   /** 已出炉候选数（并行生成） */
   done: number;
@@ -21,6 +30,7 @@ export function ForgeRitual({ symbol, done, total, conceptNames, directorMode, o
   /** director 方案名：拿到即展示，等待有盼头 */
   conceptNames?: string[];
   directorMode?: "vlm" | "fallback";
+  directorIssue?: DirectorIssue;
   onAbort?: () => void;
 }) {
   const pulse = useRef(new Animated.Value(0.35)).current;
@@ -64,7 +74,11 @@ export function ForgeRitual({ symbol, done, total, conceptNames, directorMode, o
           <Text style={{ color: theme.text, fontSize: 14, fontStyle: "italic", textAlign: "center" }}>
             本炉在锻：{conceptNames.map((n) => `〔${n}〕`).join(" ")}
           </Text>
-          {directorMode === "fallback" && <Text style={kicker(theme.textFaint)}>导演离线 · 已降级为单方案</Text>}
+          {directorMode === "fallback" && (
+            <Text style={kicker(theme.textFaint)}>
+              {directorIssue ? DIRECTOR_ISSUE_LABEL[directorIssue] : "导演通道未连接"} · 已切单方案
+            </Text>
+          )}
         </View>
       ) : (
         <Text style={{ color: theme.textDim, fontSize: 13 }}>导演正在看图构思方案…</Text>

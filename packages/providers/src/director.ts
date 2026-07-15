@@ -12,9 +12,16 @@ import { AGNES_BASE_URL } from "./agnes";
  */
 
 export const AGNES_DIRECTOR_MODEL = "agnes-2.0-flash";
-const TIMEOUT_MS = 60_000;
-// 上游 chat 端点随机断连较频繁（尤其大 payload），多给两次机会
-const RETRY_DELAYS_MS = [2_000, 6_000];
+const TIMEOUT_MS = 28_000;
+// 正常实测 11–17s；只补一次网络重试，把最坏等待从 3 分钟压到 1 分钟内。
+const RETRY_DELAYS_MS = [1_500];
+
+export type DirectorIssue = "timeout" | "rate-limit" | "upstream" | "network" | "invalid-response";
+
+export interface DirectorOutcome {
+  concepts: DirectorConcept[] | null;
+  issue?: DirectorIssue;
+}
 
 export interface DirectorConfig {
   apiKey: string;
@@ -39,6 +46,7 @@ export interface DirectRequest {
 export interface AgnesDirector {
   modelId: string;
   direct(req: DirectRequest): Promise<DirectorConcept[] | null>;
+  directDetailed(req: DirectRequest): Promise<DirectorOutcome>;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -68,7 +76,7 @@ export function createAgnesDirector(config: DirectorConfig): AgnesDirector {
       temperature: 0.35,
       // 导演只需要短 JSON；关闭推理，避免 reasoning_content 吃光预算却没有正文。
       enable_thinking: false,
-      max_tokens: 1_000,
+      max_tokens: 650,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: buildDirectorSystemPrompt(req.count, chaos) },
@@ -97,19 +105,35 @@ export function createAgnesDirector(config: DirectorConfig): AgnesDirector {
     return message?.reasoning_content ? parseDirectorSketch(message.reasoning_content) : null;
   }
 
-  async function direct(req: DirectRequest): Promise<DirectorConcept[] | null> {
+  function classifyIssue(error: unknown): DirectorIssue {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/timeout|timed out|aborted/i.test(message) || (error instanceof DOMException && error.name === "TimeoutError")) {
+      return "timeout";
+    }
+    if (/HTTP 429/.test(message)) return "rate-limit";
+    if (/HTTP \d+/.test(message)) return "upstream";
+    return "network";
+  }
+
+  async function directDetailed(req: DirectRequest): Promise<DirectorOutcome> {
+    let issue: DirectorIssue = "network";
     for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
       try {
         // HTTP 200 但正文不可解析属于确定性协议问题：立即降级，重复请求只会浪费时间。
-        return await once(req);
-      } catch {
-        /* 网络/超时 → 重试或放弃 */
+        const concepts = await once(req);
+        return concepts ? { concepts } : { concepts: null, issue: "invalid-response" };
+      } catch (error) {
+        issue = classifyIssue(error);
       }
-      if (req.signal?.aborted) return null;
+      if (req.signal?.aborted) return { concepts: null, issue: "network" };
       if (attempt < RETRY_DELAYS_MS.length) await sleep(RETRY_DELAYS_MS[attempt]!);
     }
-    return null;
+    return { concepts: null, issue };
   }
 
-  return { modelId, direct };
+  async function direct(req: DirectRequest): Promise<DirectorConcept[] | null> {
+    return (await directDetailed(req)).concepts;
+  }
+
+  return { modelId, direct, directDetailed };
 }
