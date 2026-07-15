@@ -84,8 +84,10 @@ export function downstreamNodeIds(changedNodeId: string, all: BlendNode[]): stri
  */
 export function isNodeStale(node: BlendNode, nodes: NodeReader): boolean {
   if (node.recipe.parentNodeIds.length === 0 || node.outputs.length === 0) return false;
+  const canonicalOutput = node.outputs.find((output) => output.id === node.canonicalOutputId);
+  if (!canonicalOutput) return false;
   const usedInputs = new Set(
-    node.outputs.flatMap((o) => o.executionPlan.flatMap((s) => s.inputHashes)),
+    canonicalOutput.executionPlan.flatMap((step) => step.inputHashes),
   );
   return node.recipe.parentNodeIds.some((pid) => {
     const p = nodes.getNode(pid);

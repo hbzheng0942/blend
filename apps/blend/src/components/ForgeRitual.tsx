@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Pressable, Text, View } from "react-native";
+import { Animated, Easing, Platform, Pressable, Text, View } from "react-native";
 import { display, kicker, theme } from "@/theme";
 
 /** 锻造等待仪式：熔金脉动的操作符印记 + 轮换的炉语。撑住 50–90s 的常态生成延迟。 */
@@ -13,26 +13,28 @@ const FURNACE_LINES = [
   "冷却成形，即将出炉",
 ];
 
-export function ForgeRitual({ symbol, done, total, conceptNames, onAbort }: {
+export function ForgeRitual({ symbol, done, total, conceptNames, directorMode, onAbort }: {
   symbol: string;
   /** 已出炉候选数（并行生成） */
   done: number;
   total: number;
   /** director 方案名：拿到即展示，等待有盼头 */
   conceptNames?: string[];
+  directorMode?: "vlm" | "fallback";
   onAbort?: () => void;
 }) {
   const pulse = useRef(new Animated.Value(0.35)).current;
+  const nativeDriver = Platform.OS !== "web";
   const [lineIdx, setLineIdx] = useState(0);
 
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, {
-          toValue: 1, duration: 1400, easing: Easing.inOut(Easing.ease), useNativeDriver: true,
+          toValue: 1, duration: 1400, easing: Easing.inOut(Easing.ease), useNativeDriver: nativeDriver,
         }),
         Animated.timing(pulse, {
-          toValue: 0.35, duration: 1400, easing: Easing.inOut(Easing.ease), useNativeDriver: true,
+          toValue: 0.35, duration: 1400, easing: Easing.inOut(Easing.ease), useNativeDriver: nativeDriver,
         }),
       ]),
     );
@@ -42,7 +44,7 @@ export function ForgeRitual({ symbol, done, total, conceptNames, onAbort }: {
       loop.stop();
       clearInterval(timer);
     };
-  }, [pulse]);
+  }, [nativeDriver, pulse]);
 
   return (
     <View style={{ alignItems: "center", paddingVertical: 10, gap: 10 }}>
@@ -58,15 +60,18 @@ export function ForgeRitual({ symbol, done, total, conceptNames, onAbort }: {
         <Text style={display(30, theme.emberBright)}>{symbol}</Text>
       </Animated.View>
       {conceptNames?.length ? (
-        <Text style={{ color: theme.text, fontSize: 14, fontStyle: "italic", textAlign: "center" }}>
-          本炉在锻：{conceptNames.map((n) => `〔${n}〕`).join(" ")}
-        </Text>
+        <View style={{ alignItems: "center", gap: 5 }}>
+          <Text style={{ color: theme.text, fontSize: 14, fontStyle: "italic", textAlign: "center" }}>
+            本炉在锻：{conceptNames.map((n) => `〔${n}〕`).join(" ")}
+          </Text>
+          {directorMode === "fallback" && <Text style={kicker(theme.textFaint)}>导演离线 · 已降级为单方案</Text>}
+        </View>
       ) : (
         <Text style={{ color: theme.textDim, fontSize: 13 }}>导演正在看图构思方案…</Text>
       )}
       <Text style={{ color: theme.textDim, fontSize: 13 }}>{FURNACE_LINES[lineIdx]}</Text>
       <Text style={kicker(theme.textFaint)}>
-        已出炉 {done} / {total} · 并行熔炼中 · 先出先看
+        已出炉 {done} / {total}{total > 1 ? " · 差异化并行熔炼" : " · 单方案熔炼"}
       </Text>
       {onAbort && (
         <Pressable onPress={onAbort} hitSlop={8}>

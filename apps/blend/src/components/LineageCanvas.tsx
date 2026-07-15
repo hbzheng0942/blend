@@ -111,12 +111,13 @@ function layout(nodes: BlendNode[], elements: Element[], overrides: Record<strin
 }
 
 export function LineageCanvas({
-  nodes, elements, selectedIds, onToggleNode, layoutOverrides = {}, onMoveNode, viewportHeight,
+  nodes, elements, focusedNodeId, activeParentIds, onFocusNode, layoutOverrides = {}, onMoveNode, viewportHeight,
 }: {
   nodes: BlendNode[];
   elements: Element[];
-  selectedIds: string[];
-  onToggleNode: (id: string) => void;
+  focusedNodeId: string | null;
+  activeParentIds: string[];
+  onFocusNode: (id: string) => void;
   /** tree.canvasLayout：手动拖拽过的节点位置 */
   layoutOverrides?: Record<string, Pos>;
   onMoveNode?: (id: string, pos: Pos) => void;
@@ -148,7 +149,7 @@ export function LineageCanvas({
       const from = posOf(pid);
       if (from) edges.push({
         key: pid + ">" + n.id,
-        hot: selectedIds.includes(n.id),
+        hot: activeParentIds.includes(n.id),
         from: { x: from.x + CARD_W / 2, y: from.y + CARD_H },
         to: { x: to.x + CARD_W / 2, y: to.y },
       });
@@ -157,7 +158,7 @@ export function LineageCanvas({
       const from = elPos.get(eid);
       if (from) edges.push({
         key: eid + ">" + n.id,
-        hot: selectedIds.includes(n.id),
+        hot: activeParentIds.includes(n.id),
         from: { x: from.x + EL_SIZE / 2, y: from.y + EL_SIZE },
         to: { x: to.x + CARD_W / 2, y: to.y },
       });
@@ -196,14 +197,15 @@ export function LineageCanvas({
           {nodes.map((n, i) => {
             const base = nodePos.get(n.id)!;
             const p = posOf(n.id)!;
-            const selected = selectedIds.includes(n.id);
+            const focused = focusedNodeId === n.id;
+            const active = activeParentIds.includes(n.id);
             const stale = isNodeStale(n, reader);
             const canonical = n.outputs.find((o) => o.id === n.canonicalOutputId);
             const op = OPERATORS.find((o) => o.id === n.recipe.operator);
             return (
               <NodeCard
                 key={n.id}
-                onTap={() => onToggleNode(n.id)}
+                onTap={() => onFocusNode(n.id)}
                 onDrag={(dx, dy) => setDrag({ id: n.id, dx, dy })}
                 onDrop={(dx, dy) => {
                   setDrag(null);
@@ -212,19 +214,19 @@ export function LineageCanvas({
                 style={{
                   position: "absolute", left: p.x, top: p.y, width: CARD_W,
                   zIndex: drag?.id === n.id ? 10 : undefined,
-                  backgroundColor: selected ? theme.cardRaised : theme.card,
-                  borderRadius: 8, padding: 6,
-                  borderWidth: 1,
-                  borderColor: selected ? theme.ember : stale ? theme.steelDim : theme.border,
+                  backgroundColor: focused ? theme.cardRaised : theme.card,
+                  padding: 6, borderWidth: active ? 2 : 1,
+                  borderColor: active ? theme.spore : focused ? theme.ember : stale ? theme.steelDim : theme.border,
                   borderStyle: stale ? "dashed" : "solid",
                   opacity: stale ? 0.75 : 1,
                   cursor: "grab",
+                  boxShadow: active ? `0 0 0 1px ${theme.sporeDim}` : focused ? `0 0 0 1px ${theme.emberGlow}` : undefined,
                 } as object}
               >
                 {canonical
                   ? <HashImage hash={canonical.imageHash} size={CARD_W - 12} />
                   : <View style={{ width: CARD_W - 12, height: CARD_W - 12 }} />}
-                <Text style={{ ...display(12), marginTop: 5 }}>
+                <Text style={{ ...display(12), marginTop: 5, color: active ? theme.spore : theme.text }}>
                   v{i + 1} · {op?.symbol} {op?.nameZh}
                 </Text>
                 <Text style={{ ...kicker(stale ? theme.steel : theme.textFaint), fontSize: 8.5, marginTop: 2 }}>

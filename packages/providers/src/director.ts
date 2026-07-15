@@ -1,11 +1,12 @@
 import type { DirectorConcept, OperatorId } from "@blend/core";
-import { buildDirectorSystemPrompt, buildDirectorUserText, parseDirectorConcepts } from "@blend/core";
+import {
+  buildDirectorSystemPrompt, buildDirectorUserText, parseDirectorConcepts, parseDirectorSketch,
+} from "@blend/core";
 import { AGNES_BASE_URL } from "./agnes";
 
 /**
  * Agnes VLM director：走 /v1/chat/completions（OpenAI 兼容，多模态）。
- * 模型 agnes-2.0-flash（2026-07-13 实测：图像理解可用，~13-17s；
- * agnes-2.5-flash 尚未开放渠道 → model_not_found，开放后改这里即可）。
+ * 模型 agnes-2.0-flash（非推理模型）：director 只做识图 + 短 JSON 规划。
  * 任何失败（超时/限流/JSON 不合法）一律返回 null，由调用方回退静态骨架——
  * director 是增强层，不允许增加锻造失败面。
  */
@@ -30,7 +31,7 @@ export interface DirectRequest {
   userPromptExtra?: string;
   /** 期望方案数 = 候选数 */
   count: number;
-  /** 守序 0 ⇄ 1 混沌，缺省 0.5；同时驱动 brief 措辞与采样温度 */
+  /** 守序 0 ⇄ 1 混沌，缺省 0.5；只驱动 brief 的语义距离 */
   chaos?: number;
   signal?: AbortSignal;
 }
@@ -63,9 +64,12 @@ export function createAgnesDirector(config: DirectorConfig): AgnesDirector {
     const chaos = req.chaos ?? 0.5;
     const body = {
       model: modelId,
-      // 守序 0.7 → 混沌 1.2
-      temperature: 0.7 + chaos * 0.5,
-      max_tokens: 400 * req.count,
+      // 创意距离由 brief 精确控制；低温保持 JSON、命名和锚点稳定。
+      temperature: 0.35,
+      // 导演只需要短 JSON；关闭推理，避免 reasoning_content 吃光预算却没有正文。
+      enable_thinking: false,
+      max_tokens: 1_000,
+      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: buildDirectorSystemPrompt(req.count, chaos) },
         { role: "user", content },
@@ -83,19 +87,21 @@ export function createAgnesDirector(config: DirectorConfig): AgnesDirector {
       body: JSON.stringify(body),
       signal,
     });
-    if (!resp.ok) return null;
+    if (!resp.ok) throw new Error(`agnes director HTTP ${resp.status}`);
     const json = (await resp.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
+      choices?: Array<{ message?: { content?: string; reasoning_content?: string } }>;
     };
-    const text = json.choices?.[0]?.message?.content;
-    return text ? parseDirectorConcepts(text) : null;
+    const message = json.choices?.[0]?.message;
+    if (message?.content) return parseDirectorConcepts(message.content);
+    // agnes-2.0-flash 本身不是推理模型；这是上游字段路由兼容，不向 UI 暴露草稿。
+    return message?.reasoning_content ? parseDirectorSketch(message.reasoning_content) : null;
   }
 
   async function direct(req: DirectRequest): Promise<DirectorConcept[] | null> {
     for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
       try {
-        const concepts = await once(req);
-        if (concepts) return concepts;
+        // HTTP 200 但正文不可解析属于确定性协议问题：立即降级，重复请求只会浪费时间。
+        return await once(req);
       } catch {
         /* 网络/超时 → 重试或放弃 */
       }

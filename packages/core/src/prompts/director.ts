@@ -15,6 +15,23 @@ export interface DirectorConcept {
   name: string;
   /** 自足的英文生图 prompt，不引用 image 1/2 */
   prompt: string;
+  /** 抽象语义方程，用于解释这张卡为什么成立 */
+  equation?: string;
+}
+
+/**
+ * 导演产出多少套就炼多少套；导演完全失联时只保留一个明确标注的本地方案。
+ * 这里不补齐数量，避免拿同一条静态 prompt 伪造两张“候选”。
+ */
+export function resolveDirectorConceptBatch(
+  directed: DirectorConcept[] | null,
+  requested: number,
+  fallback: DirectorConcept,
+): { concepts: DirectorConcept[]; source: "vlm" | "fallback" } {
+  const concepts = directed?.slice(0, Math.max(1, requested)).filter((concept) => concept.prompt.trim());
+  return concepts?.length
+    ? { concepts, source: "vlm" }
+    : { concepts: [fallback], source: "fallback" };
 }
 
 /** 每个操作符给 director 的意图陈述（比生图骨架更抽象，留出创作空间）。 */
@@ -43,49 +60,71 @@ export const DIRECTOR_INTENTS: Record<OperatorId, string> = {
     "absorbing fragments and details of the other subjects into its surface and structure.",
 };
 
-/** 守序 0 ⇄ 1 混沌：创意强度 + 品味守则的松紧，随档位一起变。 */
+/**
+ * 守序 0 ⇄ 1 混沌控制“语义距离”，不是随机度：
+ * 物体结构 → 行为/功能 → 意义/世界规则。
+ */
 function chaosDirective(chaos: number): string {
   if (chaos < 0.34) {
     return (
-      "- Creative register: FAITHFUL. Stay close to the inputs' original forms, proportions " +
-      "and palette; the fusion should feel like a clean, believable craft object.\n" +
-      "- Taste: keep a single focal subject, palette led by the dominant input, coherent " +
-      "lighting. Apply these strictly."
+      "- Semantic distance: OBJECT / STRUCTURE. Make a believable physical fusion. Choose one " +
+      "dominant silhouette, but preserve at least one unmistakable shape or mechanism from every " +
+      "input. Fuse construction, material or anatomy; do not turn the pair into a cosmic metaphor.\n" +
+      "- Candidate spread: use different dominant hosts or physical mechanisms, while keeping both " +
+      "sources readable at first glance."
     );
   }
   if (chaos < 0.67) {
     return (
-      "- Creative register: BALANCED. Build each concept around ONE clear creative idea; " +
-      "natural and inevitable, never forced.\n" +
-      "- Taste principles (guides, not shackles): a clear focal subject; a palette led by " +
-      "one input; coherent lighting. Bend them when the idea earns it."
+      "- Semantic distance: BEHAVIOR / FUNCTION. Keep one concrete visual anchor from every input, " +
+      "then fuse what they DO: rhythm, growth, containment, attraction, release, protection or decay.\n" +
+      "- Candidate spread: one may remain a transformed object; another may become a new organism, " +
+      "tool or habitat. Each still needs a clear silhouette and visible cause-and-effect."
     );
   }
   return (
-    "- Creative register: WILD. Bold reinterpretation welcome — scale twists, unexpected " +
-    "function, poetic re-reading. Follow the idea wherever it goes; the only hard rule is " +
-    "one coherent subject, not a collage."
+    "- Semantic distance: MEANING / WORLD RULE. Start from the tension, shared law or cultural " +
+    "meaning behind the inputs, then invent a new ontology. At least one input must contribute " +
+    "ONLY a behavior, function or meaning — not its appearance. The result's main noun/category " +
+    "must be neither original source. Do NOT make A wearing B's texture, a side-by-side collage, " +
+    "or merely an A-B hybrid noun.\n" +
+    "- Traceability leash: preserve at least one concrete, visible and causally meaningful trace " +
+    "from every input. Translate abstract forces into mechanics: orbit can become metabolism, " +
+    "detonation can become dispersal, an alarm can become a biological trigger. The leap should " +
+    "feel surprising after one second and inevitable after five.\n" +
+    "- Counterfactual engine: ask what NEW thing would exist if one input's behavior had to obey " +
+    "the other input's law. Reject the first literal hybrid answer.\n" +
+    "- Candidate spread: choose different ontological lanes appropriate to this pair, such as " +
+    "organism, ritual tool, phenomenon, habitat or system. Do not reuse a universal macro/micro formula."
   );
 }
 
 export function buildDirectorSystemPrompt(count: number, chaos = 0.5): string {
   return (
-    "You are the art director of an image-fusion tool. The image model will see BOTH your " +
-    "brief and the original input images, so do not describe everything — set the direction " +
-    "and the key fusion decisions, and leave room for the image model to pull details from " +
-    `the images itself. Design ${count} DISTINCT fusion concepts.\n` +
-    "Rules:\n" +
-    "- Each concept states clearly what each input contributes (form / material / mood). " +
-    "Concepts must differ from each other in direction.\n" +
+    "You are the concept director of an image-fusion game. The image generator will also see the " +
+    `original inputs. Return up to ${count} genuinely strong, DISTINCT concepts; omit a weak extra ` +
+    "concept instead of padding the set.\n" +
+    "Return JSON immediately. Never output analysis, image descriptions, brainstorming or revisions.\n" +
+    "Internally identify each input's visual anchors, behavior/function and meaning, then apply the " +
+    "requested semantic distance. Before returning, reject any concept that fails the BOOM gate:\n" +
+    "1) ONE-SECOND READ: one focal subject and a legible silhouette.\n" +
+    "2) TRACEABLE: visible evidence from every input, not a caption-dependent metaphor.\n" +
+    "3) NON-OBVIOUS: not simple texture transfer, decoration or two objects glued together.\n" +
+    "4) IMAGEABLE: a concrete scene the image model can render, with visible mechanics.\n" +
     chaosDirective(chaos) + "\n" +
     "- If a user direction is provided, it IS the creative core: keep its intent faithfully " +
     "and only refine it into an effective brief — do not override it or bolt on unrelated ideas.\n" +
     "- Each concept gets a NAME in Chinese: 2-6 个字，言简意赅，可以带幽默感或反差萌" +
     "（如「章鱼茶壶」「深渊下午茶」），不要英文不要拼音。\n" +
-    '- The "prompt" field: a concise English art-direction brief (20-45 words) — subject, ' +
-    "the fusion decisions, mood and lighting. No inventories of fine details. " +
+    '- Each concept gets an "equation" in Chinese, 8-24 characters, showing the conceptual ' +
+    'leap in the form “A的某种本质 × B的某种本质 → 新概念”. Example structure only: ' +
+    '“潮汐的节律 × 引擎的推力 → 会呼吸的航道”. Do not merely repeat object names.\n' +
+    '- The "prompt" field: a concise English art-direction brief (25-55 words) naming the ' +
+    "single subject, the visible anchor from each input, the fusion mechanism, scale, mood and lighting. " +
+    "Prefer concrete nouns and verbs over abstract adjectives. No inventories of fine details. " +
     'It must not reference "image 1/2".\n' +
-    'Output STRICT JSON only: {"concepts":[{"name":"...","prompt":"..."}]}'
+    'Output STRICT JSON only: {"concepts":[{"name":"...","equation":"...","prompt":"..."}]}. ' +
+    `Never return more than ${count} concepts.`
   );
 }
 
@@ -126,12 +165,43 @@ export function parseDirectorConcepts(text: string): DirectorConcept[] | null {
     const concepts = parsed.concepts.flatMap((c): DirectorConcept[] => {
       const name = (c as DirectorConcept).name;
       const prompt = (c as DirectorConcept).prompt;
+      const equation = (c as DirectorConcept).equation;
       return typeof name === "string" && typeof prompt === "string" && prompt.trim().length >= 20
-        ? [{ name: name.trim(), prompt: prompt.trim() }]
+        ? [{ name: name.trim(), prompt: prompt.trim(), ...(typeof equation === "string" && equation.trim() ? { equation: equation.trim() } : {}) }]
         : [];
     });
     return concepts.length ? concepts : null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Agnes 偶发把普通模型输出误放进 reasoning_content，并以 Markdown 草稿返回。
+ * 只回收已经完整落地的 Name / Equation / Prompt 三元组；未完成的方案直接丢弃，
+ * 绝不为了凑候选数复制 prompt。
+ */
+export function parseDirectorSketch(text: string): DirectorConcept[] | null {
+  const blocks = text.split(
+    /\n(?=(?:\*{0,2})?(?:Fusion Strategy\s*-\s*)?Concept\s*\d)/i,
+  );
+  const concepts = blocks.flatMap((block): DirectorConcept[] => {
+    const promptMatches = [...block.matchAll(/(?:Refined\s+)?Prompt\s*[:：]\s*\**([^\n]+)/gi)];
+    const promptRaw = promptMatches.at(-1)?.[1]?.replace(/\*+/g, "").trim();
+    if (!promptRaw || promptRaw.length < 20) return [];
+
+    const nameMatches = [...block.matchAll(/(?:Final\s+|Refined\s+)?(?:Concept\s*\d+\s*)?Name[^:：\n]*[:：]\s*\**([^\n]+)/gi)];
+    const nameRaw = nameMatches.at(-1)?.[1] ?? "";
+    const chineseNames = [...nameRaw.matchAll(/[\p{Script=Han}]{2,6}/gu)].map((match) => match[0]);
+    const name = chineseNames.at(-1);
+    if (!name) return [];
+
+    const equationMatches = [...block.matchAll(/(?:Refined\s+)?Equation\s*[:：]\s*\**([^\n]+)/gi)];
+    const equationRaw = equationMatches.at(-1)?.[1]
+      ?.replace(/\*+/g, "")
+      .split(/\s*\(/)[0]
+      ?.trim();
+    return [{ name, prompt: promptRaw, ...(equationRaw ? { equation: equationRaw } : {}) }];
+  });
+  return concepts.length ? concepts : null;
 }

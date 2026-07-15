@@ -27,6 +27,10 @@ describe("agnes director", () => {
       expect(String(url)).toBe("https://apihub.agnes-ai.com/v1/chat/completions");
       const body = JSON.parse(init!.body as string);
       expect(body.model).toBe("agnes-2.0-flash");
+      expect(body.enable_thinking).toBe(false);
+      expect(body.temperature).toBe(0.35);
+      expect(body.max_tokens).toBe(1_000);
+      expect(body.response_format).toEqual({ type: "json_object" });
       expect(body.messages[0].role).toBe("system");
       const content = body.messages[1].content;
       expect(content[0].type).toBe("text");
@@ -52,15 +56,13 @@ describe("agnes director", () => {
     expect(f).toHaveBeenCalledTimes(3);
   }, 15_000);
 
-  it("回复不是合法 JSON → 重试，第二次成功", async () => {
-    const f = vi
-      .fn()
-      .mockResolvedValueOnce(chatResponse("I cannot help with that."))
-      .mockResolvedValueOnce(chatResponse("```json\n" + JSON.stringify(CONCEPTS) + "\n```"));
+  it("HTTP 200 但正文非法 → 立即降级，不重复烧请求", async () => {
+    const f = vi.fn().mockResolvedValue(chatResponse("I cannot help with that."));
     const d = createAgnesDirector({ apiKey: "k", fetchImpl: f as typeof fetch });
     const r = await d.direct({ operator: "absorb", images: [], styleFragments: [], count: 2 });
-    expect(r).toHaveLength(2);
-  }, 10_000);
+    expect(r).toBeNull();
+    expect(f).toHaveBeenCalledOnce();
+  });
 
   it("自定义 baseUrl（内置 Worker 通道）", async () => {
     const f = vi.fn(async (url: RequestInfo | URL) => {
@@ -73,6 +75,21 @@ describe("agnes director", () => {
       fetchImpl: f as typeof fetch,
     });
     await d.direct({ operator: "inject", images: [], styleFragments: [], count: 1 });
+    expect(f).toHaveBeenCalledOnce();
+  });
+
+  it("兼容上游把普通草稿错放到 reasoning_content", async () => {
+    const reasoning = `Concept 1\nName: 冰封日珥\nEquation: 日火 × 月壳 → 冻结风暴\nPrompt: A blazing solar storm frozen inside a porous lunar crescent shell, cold blue mineral crust against an orange plasma core.`;
+    const f = vi.fn(async () => new Response(JSON.stringify({
+      choices: [{ message: { content: "", reasoning_content: reasoning } }],
+    }), { status: 200 }));
+    const d = createAgnesDirector({ apiKey: "k", fetchImpl: f as typeof fetch });
+    const result = await d.direct({ operator: "fuse", images: [], styleFragments: [], count: 2 });
+    expect(result).toEqual([{
+      name: "冰封日珥",
+      equation: "日火 × 月壳 → 冻结风暴",
+      prompt: "A blazing solar storm frozen inside a porous lunar crescent shell, cold blue mineral crust against an orange plasma core.",
+    }]);
     expect(f).toHaveBeenCalledOnce();
   });
 });

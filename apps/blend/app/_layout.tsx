@@ -2,10 +2,12 @@ import { Platform } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { theme } from "@/theme";
+import { PixelSystem } from "@/components/PixelSystem";
 
 export default function RootLayout() {
   return (
     <>
+      <PixelSystem />
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -13,7 +15,7 @@ export default function RootLayout() {
           headerShadowVisible: false,
           headerTintColor: theme.text,
           headerTitleStyle: {
-            fontFamily: Platform.select({ web: "Georgia, 'Songti SC', serif", default: "Georgia" }),
+            fontFamily: Platform.select({ web: "'Blend Fusion Pixel', monospace", default: "Courier" }),
             fontSize: 17,
             fontWeight: "500",
           },

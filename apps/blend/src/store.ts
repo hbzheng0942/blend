@@ -1,15 +1,17 @@
 import { create } from "zustand";
+import Constants from "expo-constants";
 import type {
   BlendMode, BlendNode, DirectorConcept, Element, OperatorId, Output, Recipe, Tree,
 } from "@blend/core";
 import {
-  DIRECTOR_ONLY_OPERATORS, buildPrompt, forgeInputHashes, recastInputHashes, runCascade,
-  styleFragments, uuid,
+  DIRECTOR_ONLY_OPERATORS, OPERATORS, STYLE_TAGS, buildPrompt, forgeInputHashes,
+  recastInputHashes, resolveDirectorConceptBatch, runCascade, styleFragments, uuid,
 } from "@blend/core";
 import type { AgnesModelId } from "@blend/providers";
 import {
-  FurnaceOverheatError, GEMINI_DEFAULT_MODEL, createAgnesDirector, createAgnesProvider,
-  createGeminiProvider,
+  FurnaceOverheatError, GEMINI_DEFAULT_MODEL, OPENAI_DEFAULT_BASE_URL,
+  OPENAI_DEFAULT_IMAGE_MODEL, createAgnesDirector, createAgnesProvider,
+  createGeminiProvider, createOpenAICompatibleProvider,
 } from "@blend/providers";
 import { blobDataUriScaled, storeBlob, storeDataUri } from "./blobs";
 import { getStorage } from "./storage";
@@ -19,8 +21,11 @@ const KEY_STORAGE = "blend.agnes.apiKey";
 const MODEL_STORAGE = "blend.agnes.model";
 const PROVIDER_STORAGE = "blend.provider";
 const GEMINI_KEY_STORAGE = "blend.gemini.apiKey";
+const OPENAI_KEY_STORAGE = "blend.openai.apiKey";
+const OPENAI_BASE_URL_STORAGE = "blend.openai.baseUrl";
+const OPENAI_MODEL_STORAGE = "blend.openai.model";
 
-export type ProviderChoice = "agnes" | "gemini";
+export type ProviderChoice = "agnes" | "gemini" | "openai";
 
 export const loadApiKey = () => globalThis.localStorage?.getItem(KEY_STORAGE) ?? "";
 
@@ -29,13 +34,18 @@ export const loadApiKey = () => globalThis.localStorage?.getItem(KEY_STORAGE) ??
  * （Worker 端持有 Agnes key，见 docs/agnes-proxy-setup.md）。
  * 用户自填 key 时直连 Agnes 官方，优先级高于内置通道。
  */
-export const BUILTIN_PROXY_URL = process.env.EXPO_PUBLIC_AGNES_PROXY_URL ?? "";
+export const BUILTIN_PROXY_URL =
+  process.env.EXPO_PUBLIC_AGNES_PROXY_URL ??
+  String(Constants.expoConfig?.extra?.agnesProxyUrl ?? "");
 export const hasBuiltinChannel = () => BUILTIN_PROXY_URL.length > 0;
 export const loadModelId = (): AgnesModelId =>
   (globalThis.localStorage?.getItem(MODEL_STORAGE) as AgnesModelId) ?? "agnes-image-2.1-flash";
 export const loadProviderChoice = (): ProviderChoice =>
   (globalThis.localStorage?.getItem(PROVIDER_STORAGE) as ProviderChoice) ?? "agnes";
 export const loadGeminiKey = () => globalThis.localStorage?.getItem(GEMINI_KEY_STORAGE) ?? "";
+export const loadOpenAIKey = () => globalThis.localStorage?.getItem(OPENAI_KEY_STORAGE) ?? "";
+export const loadOpenAIBaseUrl = () => globalThis.localStorage?.getItem(OPENAI_BASE_URL_STORAGE) ?? OPENAI_DEFAULT_BASE_URL;
+export const loadOpenAIModel = () => globalThis.localStorage?.getItem(OPENAI_MODEL_STORAGE) ?? OPENAI_DEFAULT_IMAGE_MODEL;
 
 export type ForgeStatus =
   | { phase: "idle" }
@@ -46,6 +56,7 @@ export type ForgeStatus =
       total: number;
       /** director 方案名（拿到后即展示，等待期有盼头） */
       conceptNames?: string[];
+      directorMode?: "vlm" | "fallback";
     }
   | { phase: "overheat"; cooldownSeconds: number }
   | { phase: "error"; message: string };
@@ -53,15 +64,37 @@ export type ForgeStatus =
 /** 当前锻造的中止句柄（一次只有一炉在烧）。 */
 let forgeController: AbortController | null = null;
 
+function localFallbackConcept(recipe: Recipe, staticPrompt: string): DirectorConcept {
+  const styleName = recipe.styleTags
+    .map((id) => STYLE_TAGS.find((tag) => tag.id === id)?.nameZh)
+    .find(Boolean);
+  const operatorName = OPERATORS.find((item) => item.id === recipe.operator)?.nameZh ?? "异变";
+  const name = `${styleName ?? "未知"}${operatorName}体`.slice(0, 6);
+  return {
+    name,
+    equation: `输入形态 × ${styleName ? `${styleName}质感` : "未知变量"} → ${name}`,
+    prompt:
+      staticPrompt +
+      " Commit to one iconic silhouette and one decisive fusion idea. Create a single coherent " +
+      "subject, never a side-by-side composition or loose collage.",
+  };
+}
+
 interface BlendState {
   apiKey: string;
   modelId: AgnesModelId;
   providerChoice: ProviderChoice;
   geminiKey: string;
+  openaiKey: string;
+  openaiBaseUrl: string;
+  openaiModel: string;
   setApiKey(k: string): void;
   setModelId(m: AgnesModelId): void;
   setProviderChoice(p: ProviderChoice): void;
   setGeminiKey(k: string): void;
+  setOpenAIKey(k: string): void;
+  setOpenAIBaseUrl(url: string): void;
+  setOpenAIModel(model: string): void;
 
   trees: Tree[];
   refreshTrees(): Promise<void>;
@@ -111,6 +144,9 @@ export const useBlend = create<BlendState>((set, get) => ({
   },
   providerChoice: loadProviderChoice(),
   geminiKey: loadGeminiKey(),
+  openaiKey: loadOpenAIKey(),
+  openaiBaseUrl: loadOpenAIBaseUrl(),
+  openaiModel: loadOpenAIModel(),
   setProviderChoice(p) {
     globalThis.localStorage?.setItem(PROVIDER_STORAGE, p);
     set({ providerChoice: p });
@@ -118,6 +154,18 @@ export const useBlend = create<BlendState>((set, get) => ({
   setGeminiKey(k) {
     globalThis.localStorage?.setItem(GEMINI_KEY_STORAGE, k);
     set({ geminiKey: k });
+  },
+  setOpenAIKey(k) {
+    globalThis.localStorage?.setItem(OPENAI_KEY_STORAGE, k);
+    set({ openaiKey: k });
+  },
+  setOpenAIBaseUrl(url) {
+    globalThis.localStorage?.setItem(OPENAI_BASE_URL_STORAGE, url);
+    set({ openaiBaseUrl: url });
+  },
+  setOpenAIModel(model) {
+    globalThis.localStorage?.setItem(OPENAI_MODEL_STORAGE, model);
+    set({ openaiModel: model });
   },
 
   trees: [],
@@ -170,7 +218,10 @@ export const useBlend = create<BlendState>((set, get) => ({
     parentNodeIds, elementIds, operator, styleTags = [], userPromptExtra, chaos,
     mode = "forge", intoNodeId, candidates = 2,
   }) {
-    const { tree, nodes, elements, apiKey, modelId, providerChoice, geminiKey } = get();
+    const {
+      tree, nodes, elements, apiKey, modelId, providerChoice, geminiKey,
+      openaiKey, openaiBaseUrl, openaiModel,
+    } = get();
     if (!tree) throw new Error("no tree loaded");
     if (providerChoice === "gemini" && !geminiKey) {
       set({ status: { phase: "error", message: "Gemini 需要自备 key（aistudio.google.com），去设置页贴入" } });
@@ -178,6 +229,10 @@ export const useBlend = create<BlendState>((set, get) => ({
     }
     if (providerChoice === "agnes" && !apiKey && !hasBuiltinChannel()) {
       set({ status: { phase: "error", message: "先去设置页贴入 Agnes API key（免费注册，key 只存你本地）" } });
+      return null;
+    }
+    if (providerChoice === "openai" && (!openaiKey.trim() || !openaiBaseUrl.trim() || !openaiModel.trim())) {
+      set({ status: { phase: "error", message: "OpenAI-compatible 通道需要 API key、Base URL 和图片模型名" } });
       return null;
     }
 
@@ -212,27 +267,21 @@ export const useBlend = create<BlendState>((set, get) => ({
         : null;
     const provider = providerChoice === "gemini"
       ? createGeminiProvider({ apiKey: geminiKey })
-      : createAgnesProvider({ ...agnesChannel!, modelId });
+      : providerChoice === "openai"
+        ? createOpenAICompatibleProvider({ apiKey: openaiKey, baseUrl: openaiBaseUrl, modelId: openaiModel })
+        : createAgnesProvider({ ...agnesChannel!, modelId });
     if (!provider.capabilities.supportedOperators.includes(operator)) {
       set({ status: { phase: "error", message: "该模型尚未掌握此禁术（spike 判定不达标）" } });
       return null;
     }
 
-    const effectiveModelId = providerChoice === "gemini" ? GEMINI_DEFAULT_MODEL : modelId;
+    const effectiveModelId = providerChoice === "gemini"
+      ? GEMINI_DEFAULT_MODEL
+      : providerChoice === "openai"
+        ? openaiModel
+        : modelId;
     const staticPrompt = buildPrompt(recipe);
     const outputs: Output[] = [];
-    // 级联执行器的单步 runner：hash → data URI → 生成 → 存回 blob store
-    const runner = {
-      providerId: provider.id,
-      modelId: effectiveModelId,
-      maxInputImages: provider.capabilities.maxInputImages,
-      async runStep(hashes: string[], stepPrompt: string) {
-        // 1536px 上限：保融合细节的同时避免多 MB payload 触发上游断连
-        const images = await Promise.all(hashes.map((h) => blobDataUriScaled(h, 1536)));
-        const res = await provider.generate({ prompt: stepPrompt, images, signal });
-        return storeDataUri(res.image);
-      },
-    };
 
     // VLM director：一次调用产出 candidates 条互异设计方案（每候选一条）。
     // 失败/超时静默回退静态骨架，不增加锻造失败面。
@@ -240,7 +289,7 @@ export const useBlend = create<BlendState>((set, get) => ({
     forgeController = new AbortController();
     const signal = forgeController.signal;
     set({ status: { phase: "forging", done: 0, total: candidates } });
-    let concepts: DirectorConcept[] | null = null;
+    let directedConcepts: DirectorConcept[] | null = null;
     if (agnesChannel) {
       const director = createAgnesDirector(agnesChannel);
       // director 只需看懂内容，512px 大幅压 payload（大图是 chat 端点断连主因）
@@ -249,7 +298,7 @@ export const useBlend = create<BlendState>((set, get) => ({
           .slice(0, provider.capabilities.maxInputImages)
           .map((h) => blobDataUriScaled(h, 512)),
       );
-      concepts = await director
+      directedConcepts = await director
         .direct({
           operator, images: directorImages, count: candidates,
           styleFragments: styleFragments(styleTags), userPromptExtra, chaos, signal,
@@ -262,12 +311,37 @@ export const useBlend = create<BlendState>((set, get) => ({
     }
     // subtract/intersect 只有 director 出的 prompt 才语义达标（spike 翻案结论），
     // 回退静态骨架必然出废图 → 直接中止
-    if (!concepts && DIRECTOR_ONLY_OPERATORS.has(operator)) {
+    if (!directedConcepts && DIRECTOR_ONLY_OPERATORS.has(operator)) {
       set({ status: { phase: "error", message: "此禁术需要导演出手，但导演暂时联系不上——稍后再试" } });
       return null;
     }
-    const conceptNames = concepts?.flatMap((c) => (c.name ? [c.name] : []));
-    set({ status: { phase: "forging", done: 0, total: candidates, conceptNames } });
+    // 不伪造候选数：导演只给几套就生成几套；导演失败则明确降级为一个本地方案。
+    const conceptBatch = resolveDirectorConceptBatch(
+      directedConcepts,
+      candidates,
+      localFallbackConcept(recipe, staticPrompt),
+    );
+    const concepts = conceptBatch.concepts;
+    const actualCandidates = concepts.length;
+    const directorMode = conceptBatch.source;
+    const conceptNames = concepts.map((concept) => concept.name);
+    set({ status: { phase: "forging", done: 0, total: actualCandidates, conceptNames, directorMode } });
+
+    const seedBase = Date.now() % 2_000_000_000;
+    const makeRunner = (candidateIndex: number) => {
+      let stepIndex = 0;
+      return {
+        providerId: provider.id,
+        modelId: effectiveModelId,
+        maxInputImages: provider.capabilities.maxInputImages,
+        async runStep(hashes: string[], stepPrompt: string) {
+          const images = await Promise.all(hashes.map((h) => blobDataUriScaled(h, 1536)));
+          const seed = seedBase + candidateIndex * 104_729 + stepIndex++ * 8_191;
+          const res = await provider.generate({ prompt: stepPrompt, images, signal, seed });
+          return storeDataUri(res.image);
+        },
+      };
+    };
 
     // 并行抽卡 + 先出先展示：每张候选完成即落库刷新，不等整炉。
     const s = getStorage();
@@ -296,21 +370,22 @@ export const useBlend = create<BlendState>((set, get) => ({
         const rest = get().nodes.filter((n) => n.id !== node!.id);
         set({
           nodes: [...rest, node].sort((a, b) => a.createdAt - b.createdAt),
-          status: { phase: "forging", done: outputs.length, total: candidates, conceptNames },
+          status: { phase: "forging", done: outputs.length, total: actualCandidates, conceptNames, directorMode },
         });
       });
       return persistQueue;
     };
 
     const results = await Promise.allSettled(
-      Array.from({ length: candidates }, async (_v, i) => {
-        const concept = concepts?.[i % concepts.length];
-        const prompt = concept?.prompt ?? staticPrompt;
-        const { outputHash, executionPlan } = await runCascade(inputHashes, prompt, runner);
+      Array.from({ length: actualCandidates }, async (_v, i) => {
+        const concept = concepts[i]!;
+        const prompt = concept.prompt;
+        const seed = seedBase + i * 104_729;
+        const { outputHash, executionPlan } = await runCascade(inputHashes, prompt, makeRunner(i));
         await persistOutput({
           id: uuid(), imageHash: outputHash,
           executionPlan, providerId: provider.id, modelId: effectiveModelId, finalPrompt: prompt,
-          ...(concept ? { conceptName: concept.name } : {}),
+          seed, conceptName: concept.name, conceptEquation: concept.equation, conceptSource: directorMode,
         });
       }),
     );

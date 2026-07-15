@@ -222,4 +222,23 @@ describe("isNodeStale", () => {
     parent.canonicalOutputId = "p-o2"; // 改选
     expect(isNodeStale(child, reader)).toBe(true);
   });
+
+  it("reroll 使用了新 parent，但 canonical 仍是旧候选时保持 stale", () => {
+    const parent = mkNode("p", [], ["e1"], "hashA");
+    parent.outputs.push({
+      id: "p-o2", imageHash: "hashB", providerId: "agnes", modelId: "m", finalPrompt: "p",
+      executionPlan: [{ inputHashes: ["e1"], prompt: "p", outputHash: "hashB", providerId: "agnes", modelId: "m" }],
+    });
+    parent.canonicalOutputId = "p-o2";
+    const child = mkNode("c", ["p"], ["hashA"], "hashC-old");
+    child.outputs.push({
+      id: "c-o2", imageHash: "hashC-new", providerId: "agnes", modelId: "m", finalPrompt: "p",
+      executionPlan: [{ inputHashes: ["hashB"], prompt: "p", outputHash: "hashC-new", providerId: "agnes", modelId: "m" }],
+    });
+    const reader = { getNode: (id: string) => ({ p: parent, c: child } as Record<string, BlendNode>)[id] };
+
+    expect(isNodeStale(child, reader)).toBe(true);
+    child.canonicalOutputId = "c-o2";
+    expect(isNodeStale(child, reader)).toBe(false);
+  });
 });

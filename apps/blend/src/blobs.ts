@@ -14,6 +14,34 @@ export async function storeBlob(blob: Blob): Promise<string> {
   return hash;
 }
 
+/**
+ * 浏览器输入图预处理：只在图片过大时缩到 2048px，并转成高质量 WebP。
+ * 降低 IndexedDB 占用与发往生图接口的等待，同时保留透明通道。
+ */
+export async function optimizeInputBlob(blob: Blob, maxDim = 2048): Promise<Blob> {
+  if (!blob.type.startsWith("image/")) return blob;
+  let bmp: ImageBitmap;
+  try {
+    bmp = await createImageBitmap(blob);
+  } catch {
+    // 某些应用写入剪贴板的图片 MIME 与实际编码不一致；保留原 blob，避免阻断投入。
+    return blob;
+  }
+  const scale = Math.min(1, maxDim / Math.max(bmp.width, bmp.height));
+  if (scale === 1 && blob.size <= 1_800_000) {
+    bmp.close();
+    return blob;
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bmp.width * scale));
+  canvas.height = Math.max(1, Math.round(bmp.height * scale));
+  canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  bmp.close();
+  return new Promise((resolve) =>
+    canvas.toBlob((out) => resolve(out ?? blob), "image/webp", 0.88),
+  );
+}
+
 /** hash → 可渲染的 object URL（带缓存）。 */
 export async function blobUrl(hash: string): Promise<string | null> {
   const hit = urlCache.get(hash);

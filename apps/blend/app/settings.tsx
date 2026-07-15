@@ -1,6 +1,8 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Stack, useRouter } from "expo-router";
 import type { AgnesModelId } from "@blend/providers";
 import { hasBuiltinChannel, useBlend } from "@/store";
+import { OrganicBackdrop } from "@/components/OrganicBackdrop";
 import { display, kicker, theme } from "@/theme";
 
 const MODELS: Array<{ id: AgnesModelId; label: string; desc: string }> = [
@@ -17,19 +19,34 @@ const MODELS: Array<{ id: AgnesModelId; label: string; desc: string }> = [
 ];
 
 export default function Settings() {
+  const router = useRouter();
   const {
     apiKey, setApiKey, modelId, setModelId, providerChoice, setProviderChoice,
-    geminiKey, setGeminiKey,
+    geminiKey, setGeminiKey, openaiKey, setOpenAIKey,
+    openaiBaseUrl, setOpenAIBaseUrl, openaiModel, setOpenAIModel,
   } = useBlend();
 
   return (
-    <View style={styles.page}>
+    <View style={styles.shell}>
+      <Stack.Screen options={{ headerShown: false, title: "设置" }} />
+      <OrganicBackdrop />
+      <View style={styles.topBar}>
+        <Pressable accessibilityRole="button" accessibilityLabel="返回首页" onPress={() => router.replace("/")} style={styles.backBtn}>
+          <Text style={styles.backText}>←</Text>
+        </Pressable>
+        <View>
+          <Text style={kicker(theme.textFaint)}>SYSTEM / 03</Text>
+          <Text style={styles.topTitle}>炉心设置</Text>
+        </View>
+      </View>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.page}>
       <View style={styles.section}>
         <Text style={kicker(theme.textFaint)}>Provider</Text>
         <Text style={styles.h}>生图引擎</Text>
         {([
           ["agnes", "Agnes", "默认 · 免费" + (hasBuiltinChannel() ? " · 内置通道开箱即用" : " · 需免费注册 key")],
           ["gemini", "Gemini (Nano Banana 2)", "BYOK · 多图理解上限 14 张 · 需自备 Google key"],
+          ["openai", "OpenAI-compatible", "BYOK · GPT Image 2 / 其他兼容图片编辑服务"],
         ] as const).map(([id, label, desc]) => (
           <Pressable
             key={id}
@@ -42,6 +59,48 @@ export default function Settings() {
             <Text style={{ color: theme.textDim, fontSize: 12, marginTop: 4 }}>{desc}</Text>
           </Pressable>
         ))}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={kicker(theme.textFaint)}>OpenAI-compatible / BYOK</Text>
+        <Text style={styles.h}>自定义图片编辑通道</Text>
+        <Text style={styles.p}>
+          适配标准 multipart /v1/images/edits（image[]）。默认直连 OpenAI，也可换成实现相同协议的服务。
+          Key 只存当前浏览器并直接发给你填写的地址；对方必须允许浏览器 CORS。
+        </Text>
+        <Text style={styles.fieldLabel}>API KEY</Text>
+        <TextInput
+          style={styles.input}
+          value={openaiKey}
+          onChangeText={setOpenAIKey}
+          placeholder="sk-..."
+          placeholderTextColor={theme.textFaint}
+          secureTextEntry
+          autoCapitalize="none"
+        />
+        <Text style={styles.fieldLabel}>BASE URL</Text>
+        <TextInput
+          style={styles.input}
+          value={openaiBaseUrl}
+          onChangeText={setOpenAIBaseUrl}
+          placeholder="https://api.openai.com"
+          placeholderTextColor={theme.textFaint}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <Text style={styles.fieldLabel}>IMAGE MODEL</Text>
+        <TextInput
+          style={styles.input}
+          value={openaiModel}
+          onChangeText={setOpenAIModel}
+          placeholder="gpt-image-2"
+          placeholderTextColor={theme.textFaint}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <Text style={styles.warning}>
+          个人实验可直连；公开站点不要替用户托管第三方 Key。官方 OpenAI 若拦截浏览器 CORS，请填写你自己的兼容代理地址。
+        </Text>
       </View>
 
       <View style={styles.section}>
@@ -96,25 +155,39 @@ export default function Settings() {
           </Pressable>
         ))}
       </View>
+      <Pressable onPress={() => router.replace("/")} style={styles.homeBtn}>
+        <Text style={styles.homeBtnText}>保存于本机 · 返回首页 →</Text>
+      </Pressable>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, padding: 20, gap: 16, maxWidth: 720, width: "100%", alignSelf: "center" },
+  shell: { flex: 1, backgroundColor: theme.bg },
+  topBar: { minHeight: 72, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, borderBottomWidth: 1, borderColor: theme.border, backgroundColor: "rgba(0,0,0,.88)" },
+  backBtn: { width: 40, height: 40, borderWidth: 1, borderColor: theme.borderStrong, alignItems: "center", justifyContent: "center" },
+  backText: { ...display(17) },
+  topTitle: { ...display(16), marginTop: 2 },
+  scroll: { flex: 1 },
+  page: { padding: 20, paddingBottom: 64, gap: 16, maxWidth: 720, width: "100%", alignSelf: "center" },
   section: {
-    backgroundColor: theme.panel, borderRadius: 12, padding: 18, gap: 8,
+    backgroundColor: "rgba(7,7,7,.92)", padding: 18, gap: 8,
     borderWidth: 1, borderColor: theme.border,
   },
   h: { ...display(18) },
   p: { color: theme.textDim, fontSize: 13, lineHeight: 20 },
+  fieldLabel: { ...kicker(theme.textFaint), fontSize: 9, marginTop: 7 },
+  warning: { color: theme.textFaint, fontSize: 11, lineHeight: 18, paddingTop: 4 },
   input: {
-    backgroundColor: theme.card, color: theme.text, borderRadius: 8,
+    backgroundColor: theme.card, color: theme.text,
     borderWidth: 1, borderColor: theme.border, padding: 12, marginTop: 4,
   },
   model: {
-    backgroundColor: theme.card, borderRadius: 8, padding: 14, marginTop: 6,
+    backgroundColor: theme.card, padding: 14, marginTop: 6,
     borderWidth: 1, borderColor: theme.border,
   },
   modelActive: { borderColor: theme.ember, backgroundColor: theme.emberGlow },
+  homeBtn: { minHeight: 52, backgroundColor: theme.ember, alignItems: "center", justifyContent: "center", paddingHorizontal: 18 },
+  homeBtnText: { color: "#050505", fontSize: 13, fontWeight: "800" },
 });

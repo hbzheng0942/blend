@@ -57,15 +57,15 @@ export async function exportPoster(tree: Tree, node: BlendNode, versionLabel: st
   const ctx = canvas.getContext("2d")!;
 
   // 纸面
-  ctx.fillStyle = "#0f0d0b";
+  ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, W, H);
 
   // 主图 + 发丝框
   const imgSize = W - PAD * 2;
-  ctx.fillStyle = "#1d1915";
+  ctx.fillStyle = "#0d0d0d";
   ctx.fillRect(PAD - 1, PAD - 1, imgSize + 2, imgSize + 2);
   ctx.drawImage(img, PAD, PAD, imgSize, imgSize);
-  ctx.strokeStyle = "rgba(237,230,218,0.18)";
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
   ctx.lineWidth = 1;
   ctx.strokeRect(PAD - 0.5, PAD - 0.5, imgSize + 1, imgSize + 1);
 
@@ -73,7 +73,7 @@ export async function exportPoster(tree: Tree, node: BlendNode, versionLabel: st
   let y = PAD + imgSize + 96;
 
   // kicker
-  ctx.fillStyle = "#93887a";
+  ctx.fillStyle = "#a0a09b";
   ctx.font = "600 24px Georgia, serif";
   const styleNames = node.recipe.styleTags
     .map((t) => STYLE_TAGS.find((s) => s.id === t)?.nameZh)
@@ -86,19 +86,19 @@ export async function exportPoster(tree: Tree, node: BlendNode, versionLabel: st
 
   // 标题（衬线）：director 命名优先，树名退居副题
   y += 78;
-  ctx.fillStyle = "#ede6da";
+  ctx.fillStyle = "#f4f4f1";
   ctx.font = "56px Georgia, 'Songti SC', serif";
   ctx.fillText(canonical.conceptName ?? tree.title, PAD, y);
   if (canonical.conceptName) {
     y += 40;
-    ctx.fillStyle = "#93887a";
+    ctx.fillStyle = "#a0a09b";
     ctx.font = "26px Georgia, 'Songti SC', serif";
     ctx.fillText(tree.title, PAD, y);
   }
 
   // 熔金细节线
   y += 44;
-  ctx.strokeStyle = "#e08e45";
+  ctx.strokeStyle = "#f4f4f1";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(PAD, y);
@@ -106,17 +106,17 @@ export async function exportPoster(tree: Tree, node: BlendNode, versionLabel: st
   ctx.stroke();
 
   // 操作符大印记（右下，衬线熔金）
-  ctx.fillStyle = "rgba(224,142,69,0.85)";
+  ctx.fillStyle = "rgba(255,255,255,0.82)";
   ctx.font = "120px Georgia, serif";
   ctx.textAlign = "right";
   ctx.fillText(op?.symbol ?? "⊕", W - PAD, H - PAD + 10);
 
   // 落款
-  ctx.fillStyle = "#5f574c";
+  ctx.fillStyle = "#5c5c58";
   ctx.font = "600 22px Georgia, serif";
   ctx.textAlign = "left";
   ctx.fillText("BLEND · CONCEPT FORGE", PAD, H - PAD);
-  ctx.fillStyle = "#3f3a33";
+  ctx.fillStyle = "#323230";
   ctx.font = "20px Georgia, serif";
   ctx.fillText(new Date(node.createdAt).toISOString().slice(0, 10), PAD, H - PAD + 34);
 
@@ -163,19 +163,19 @@ export async function exportLineagePoster(
   canvas.height = CH;
   const ctx = canvas.getContext("2d")!;
 
-  ctx.fillStyle = "#0f0d0b";
+  ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, CW, CH);
 
   // 题头
-  ctx.fillStyle = "#93887a";
+  ctx.fillStyle = "#a0a09b";
   ctx.font = "600 26px Georgia, serif";
   ctx.fillText("BLEND · LINEAGE", P, P + 10);
-  ctx.fillStyle = "#ede6da";
+  ctx.fillStyle = "#f4f4f1";
   ctx.font = "52px Georgia, 'Songti SC', serif";
   ctx.fillText(tree.title, P, P + 74);
 
   const hairline = (y: number) => {
-    ctx.strokeStyle = "rgba(237,230,218,0.14)";
+    ctx.strokeStyle = "rgba(255,255,255,0.14)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(P, y);
@@ -186,7 +186,7 @@ export async function exportLineagePoster(
   // 原始要素行
   let y = P + 120;
   hairline(y - 14);
-  ctx.fillStyle = "#5f574c";
+  ctx.fillStyle = "#5c5c58";
   ctx.font = "600 20px Georgia, serif";
   ctx.fillText("ELEMENTS", P, y + 12);
   const eThumb = 96;
@@ -208,7 +208,7 @@ export async function exportLineagePoster(
 
   // 融合路径链
   hairline(y - 14);
-  ctx.fillStyle = "#5f574c";
+  ctx.fillStyle = "#5c5c58";
   ctx.fillText("PATH", P, y + 12);
   y += 30;
   const cThumb = 148;
@@ -222,13 +222,13 @@ export async function exportLineagePoster(
     if (canonical) {
       const url = await blobUrl(canonical.imageHash);
       if (url) ctx.drawImage(await loadImage(url), x, ry, cThumb, cThumb);
-      ctx.strokeStyle = "rgba(237,230,218,0.18)";
+      ctx.strokeStyle = "rgba(255,255,255,0.22)";
       ctx.strokeRect(x - 0.5, ry - 0.5, cThumb + 1, cThumb + 1);
     }
-    ctx.fillStyle = "rgba(224,142,69,0.9)";
+    ctx.fillStyle = "rgba(255,255,255,0.88)";
     ctx.font = "34px Georgia, serif";
     ctx.fillText(op?.symbol ?? "⊕", x + cThumb + 12, ry + cThumb / 2 + 12);
-    ctx.fillStyle = "#5f574c";
+    ctx.fillStyle = "#5c5c58";
     ctx.font = "600 18px Georgia, serif";
     ctx.fillText("v" + (i + 1), x, ry + cThumb + 24);
   }
@@ -240,19 +240,19 @@ export async function exportLineagePoster(
   const imgX = (CW - maxImg) / 2;
   const finalUrl = await blobUrl(targetCanonical.imageHash);
   if (finalUrl) ctx.drawImage(await loadImage(finalUrl), imgX, y, maxImg, maxImg);
-  ctx.strokeStyle = "rgba(237,230,218,0.18)";
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
   ctx.strokeRect(imgX - 0.5, y - 0.5, maxImg + 1, maxImg + 1);
   if (targetCanonical.conceptName) {
-    ctx.fillStyle = "#ede6da";
+    ctx.fillStyle = "#f4f4f1";
     ctx.font = "italic 30px Georgia, serif";
     ctx.fillText(targetCanonical.conceptName, imgX, y + maxImg + 40);
   }
 
   // 落款
-  ctx.fillStyle = "#5f574c";
+  ctx.fillStyle = "#5c5c58";
   ctx.font = "600 22px Georgia, serif";
   ctx.fillText("BLEND · CONCEPT FORGE", P, CH - P + 10);
-  ctx.fillStyle = "#3f3a33";
+  ctx.fillStyle = "#323230";
   ctx.font = "20px Georgia, serif";
   ctx.fillText(
     `${chain.length} forgings · ${els.length} elements · ${new Date().toISOString().slice(0, 10)}`,

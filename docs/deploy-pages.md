@@ -18,7 +18,7 @@
 cd apps/blend
 EXPO_PUBLIC_AGNES_PROXY_URL=https://blend-agnes-proxy.<子域>.workers.dev \
   pnpm run export:web
-npx wrangler pages deploy dist --project-name blend
+npx wrangler pages deploy dist --project-name blend-bnf
 ```
 
 ## 验证清单

@@ -23,7 +23,7 @@ export interface Recipe {
   operator: OperatorId;
   styleTags: string[];
   userPromptExtra?: string;
-  /** 守序 0 ⇄ 1 混沌（director 创意强度 + 采样温度），缺省 0.5 */
+  /** 守序 0 ⇄ 1 混沌（director 的语义距离），缺省 0.5 */
   chaos?: number;
   /** forge=喂上轮输出图（信息衰减美学）；recast=全要素重新融合（高保真） */
   mode: BlendMode;
@@ -50,6 +50,10 @@ export interface Output {
   finalPrompt: string;
   /** VLM director 给该候选方案的命名（无 director 时缺省） */
   conceptName?: string;
+  /** 输入之间的抽象语义跃迁，适合卡面传播 */
+  conceptEquation?: string;
+  /** vlm=导演理解后生成；fallback=导演不可用时的单方案降级 */
+  conceptSource?: "vlm" | "fallback";
 }
 
 /** 谱系树节点：候选全保留，canonical 可反悔改选。 */

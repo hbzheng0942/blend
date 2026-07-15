@@ -40,6 +40,11 @@ export async function storeBlob(blob: Blob): Promise<string> {
   return storeBytes(new Uint8Array(await blob.arrayBuffer()));
 }
 
+/** native 端暂不做输入压缩；移动端视觉与管线后续单独优化。 */
+export async function optimizeInputBlob(blob: Blob): Promise<Blob> {
+  return blob;
+}
+
 /** hash → 渲染 URI：native 直接给 file:// 路径，零拷贝。 */
 export async function blobUrl(hash: string): Promise<string | null> {
   return blobFileUri(hash);
