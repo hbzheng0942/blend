@@ -88,6 +88,17 @@ describe("agnes provider", () => {
     expect(f).toHaveBeenCalledTimes(1);
   });
 
+  it("等待超时后直接给出可读错误，不再重复等整轮", async () => {
+    const f = vi.fn((_url: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+    }));
+    const p = createAgnesProvider({
+      apiKey: "k", fetchImpl: f as typeof fetch, timeoutMs: 5, retryDelaysMs: [1],
+    });
+    await expect(p.generate({ prompt: "p", images: [] })).rejects.toThrow("图像炉 1 秒未响应");
+    expect(f).toHaveBeenCalledOnce();
+  });
+
   it("超过 maxInputImages 本地直接拒绝", async () => {
     const f = vi.fn();
     await expect(

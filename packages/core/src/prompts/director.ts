@@ -192,7 +192,7 @@ export function parseDirectorConcepts(text: string): DirectorConcept[] | null {
  */
 export function parseDirectorSketch(text: string): DirectorConcept[] | null {
   const blocks = text.split(
-    /\n(?=(?:\*{0,2})?(?:Fusion Strategy\s*-\s*)?Concept\s*\d)/i,
+    /\n(?=(?:\*{0,2})?(?:(?:Fusion\s+)?(?:Strategy\s*-\s*)?)?Concept\s*\d)/i,
   );
   const concepts = blocks.flatMap((block): DirectorConcept[] => {
     const promptMatches = [...block.matchAll(/(?:Refined\s+)?Prompt\s*[:：]\s*\**([^\n]+)/gi)];
@@ -200,7 +200,10 @@ export function parseDirectorSketch(text: string): DirectorConcept[] | null {
     if (!promptRaw || promptRaw.length < 20) return [];
 
     const nameMatches = [...block.matchAll(/(?:Final\s+|Refined\s+)?(?:Concept\s*\d+\s*)?Name[^:：\n]*[:：]\s*\**([^\n]+)/gi)];
-    const nameRaw = nameMatches.at(-1)?.[1] ?? "";
+    const chosenMatches = [
+      ...block.matchAll(/(?:Let's use|Use)\s+["“]?([\p{Script=Han}]{2,6})["”]?/giu),
+    ];
+    const nameRaw = nameMatches.at(-1)?.[1] ?? chosenMatches.at(-1)?.[1] ?? "";
     const chineseNames = [...nameRaw.matchAll(/[\p{Script=Han}]{2,6}/gu)].map((match) => match[0]);
     const name = chineseNames.at(-1);
     if (!name) return [];

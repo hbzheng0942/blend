@@ -21,6 +21,9 @@ export interface AgnesConfig {
   baseUrl?: string;
   modelId?: AgnesModelId;
   fetchImpl?: typeof fetch;
+  /** 公共通道可用更短等待；BYOK 默认保留长队列容忍度。 */
+  timeoutMs?: number;
+  retryDelaysMs?: number[];
 }
 
 export type AgnesModelId = "agnes-image-2.0-flash" | "agnes-image-2.1-flash";
@@ -56,6 +59,8 @@ export function createAgnesProvider(config: AgnesConfig): Provider {
   const modelId: AgnesModelId = config.modelId ?? "agnes-image-2.0-flash";
   const base = (config.baseUrl ?? AGNES_BASE_URL).replace(/\/$/, "");
   const doFetch = config.fetchImpl ?? fetch;
+  const timeoutMs = config.timeoutMs ?? TIMEOUT_MS;
+  const retryDelaysMs = config.retryDelaysMs ?? RETRY_DELAYS_MS;
 
   async function once(req: GenerateRequest): Promise<GenerateResult> {
     const body: Record<string, unknown> = {
@@ -69,18 +74,28 @@ export function createAgnesProvider(config: AgnesConfig): Provider {
       ...(req.seed !== undefined ? { seed: req.seed } : {}),
     };
 
-    const timeoutSignal = AbortSignal.timeout(TIMEOUT_MS);
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
     const signal = req.signal ? AbortSignal.any([req.signal, timeoutSignal]) : timeoutSignal;
 
-    const resp = await doFetch(base + "/v1/images/generations", {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + config.apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-      signal,
-    });
+    let resp: Response;
+    try {
+      resp = await doFetch(base + "/v1/images/generations", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + config.apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal,
+      });
+    } catch (error) {
+      if (timeoutSignal.aborted && !req.signal?.aborted) {
+        const timeoutError = new Error(`图像炉 ${Math.max(1, Math.round(timeoutMs / 1_000))} 秒未响应，请稍后再试`) as Error & { timeout: boolean };
+        timeoutError.timeout = true;
+        throw timeoutError;
+      }
+      throw error;
+    }
 
     if (!resp.ok) {
       let parsed: AgnesErrorBody | null = null;
@@ -117,7 +132,7 @@ export function createAgnesProvider(config: AgnesConfig): Provider {
       );
     }
     let lastErr: unknown;
-    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
       try {
         return await once(req);
       } catch (e) {
@@ -127,8 +142,8 @@ export function createAgnesProvider(config: AgnesConfig): Provider {
         // 可重试：队列满/5xx/网络层异常；4xx（除 429）不可重试
         const retriable =
           status === undefined || status === 429 || (status >= 500 && status < 600);
-        if (!retriable || attempt === RETRY_DELAYS_MS.length) break;
-        await sleep(RETRY_DELAYS_MS[attempt]!);
+        if (!retriable || (e as { timeout?: boolean }).timeout || attempt === retryDelaysMs.length) break;
+        await sleep(retryDelaysMs[attempt]!);
       }
     }
     const status = (lastErr as { status?: number }).status;

@@ -86,6 +86,34 @@ Concept 2 (Micro Organism)
   it("未写完 Prompt 的方案不回收", () => {
     expect(parseDirectorSketch("Concept 1\nName: 月胚\nEquation: 日 × 月 → 胚胎")).toBeNull();
   });
+
+  it("回收上游 length 截断前已经写完整的 Fusion Concept 草稿", () => {
+    const sketch = `**Fusion Concept 1: The Chrono-Bonsai**
+- Chinese chars: 时光盆景. Let's use "时光盆景".
+- Equation: 复古闹钟 + 盆景 = 机械生命体 (translation)
+- Prompt: A surreal fusion where an alarm clock casing forms a twisted bonsai trunk, with roots wrapping the metal base and foliage replacing its bells.
+
+**Fusion Concept 2: Eternal Growth**
+- Chinese chars: 岁月之树. Let's use "岁月之树".
+- Equation: 老式时钟 + 松树 = 自然与时间的融合 (translation)
+- Prompt: A classic alarm clock overtaken by a pine bonsai, exposed roots forming the number ring and twin bells transformed into moss-covered branches.
+
+Let's refine the JSON structure.
+Concept 1:
+Name: 时光盆景`;
+    expect(parseDirectorSketch(sketch)).toEqual([
+      {
+        name: "时光盆景",
+        equation: "复古闹钟 + 盆景 = 机械生命体",
+        prompt: "A surreal fusion where an alarm clock casing forms a twisted bonsai trunk, with roots wrapping the metal base and foliage replacing its bells.",
+      },
+      {
+        name: "岁月之树",
+        equation: "老式时钟 + 松树 = 自然与时间的融合",
+        prompt: "A classic alarm clock overtaken by a pine bonsai, exposed roots forming the number ring and twin bells transformed into moss-covered branches.",
+      },
+    ]);
+  });
 });
 
 describe("parseDirectorConcepts", () => {

@@ -70,7 +70,9 @@ function localFallbackConcept(recipe: Recipe, staticPrompt: string): DirectorCon
     .map((id) => STYLE_TAGS.find((tag) => tag.id === id)?.nameZh)
     .find(Boolean);
   const operatorName = OPERATORS.find((item) => item.id === recipe.operator)?.nameZh ?? "异变";
-  const name = `${styleName ?? "未知"}${operatorName}体`.slice(0, 6);
+  const name = styleName
+    ? `${styleName}${operatorName}体`.slice(0, 6)
+    : recipe.operator === "auto" ? "保守融合体" : `保守${operatorName}体`.slice(0, 6);
   return {
     name,
     equation: `输入形态 × ${styleName ? `${styleName}质感` : "未知变量"} → ${name}`,
@@ -276,11 +278,15 @@ export const useBlend = create<BlendState>((set, get) => ({
       : hasBuiltinChannel()
         ? { apiKey: "builtin", baseUrl: BUILTIN_PROXY_URL }
         : null;
+    const usingBuiltinAgnes = !apiKey && !!agnesChannel;
     const provider = providerChoice === "gemini"
       ? createGeminiProvider({ apiKey: geminiKey })
       : providerChoice === "openai"
         ? createOpenAICompatibleProvider({ apiKey: openaiKey, baseUrl: openaiBaseUrl, modelId: openaiModel })
-        : createAgnesProvider({ ...agnesChannel!, modelId });
+        : createAgnesProvider({
+            ...agnesChannel!, modelId,
+            ...(usingBuiltinAgnes ? { timeoutMs: 120_000, retryDelaysMs: [5_000] } : {}),
+          });
     if (!provider.capabilities.supportedOperators.includes(operator)) {
       set({ status: { phase: "error", message: "该模型尚未掌握此禁术（spike 判定不达标）" } });
       return null;
