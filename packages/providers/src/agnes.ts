@@ -24,6 +24,8 @@ export interface AgnesConfig {
   /** 公共通道可用更短等待；BYOK 默认保留长队列容忍度。 */
   timeoutMs?: number;
   retryDelaysMs?: number[];
+  /** 公共炉可在主模型 5xx/队列满时切到另一条图像队列；BYOK 默认不切换。 */
+  fallbackModelId?: AgnesModelId;
 }
 
 export type AgnesModelId = "agnes-image-2.0-flash" | "agnes-image-2.1-flash";
@@ -62,15 +64,15 @@ export function createAgnesProvider(config: AgnesConfig): Provider {
   const timeoutMs = config.timeoutMs ?? TIMEOUT_MS;
   const retryDelaysMs = config.retryDelaysMs ?? RETRY_DELAYS_MS;
 
-  async function once(req: GenerateRequest): Promise<GenerateResult> {
+  async function once(req: GenerateRequest, targetModelId = modelId): Promise<GenerateResult> {
     const body: Record<string, unknown> = {
-      model: modelId,
+      model: targetModelId,
       prompt: req.prompt,
       extra_body: {
         response_format: "b64_json",
         ...(req.images.length ? { image: req.images } : {}),
       },
-      ...(modelId.includes("2.1") ? { size: "1K", ratio: "1:1" } : { size: "1024x1024" }),
+      ...(targetModelId.includes("2.1") ? { size: "1K", ratio: "1:1" } : { size: "1024x1024" }),
       ...(req.seed !== undefined ? { seed: req.seed } : {}),
     };
 
@@ -119,9 +121,9 @@ export function createAgnesProvider(config: AgnesConfig): Provider {
     };
     const d = json.data?.[0];
     if (d?.b64_json) {
-      return { image: "data:image/png;base64," + d.b64_json, seed: req.seed, raw: json };
+      return { image: "data:image/png;base64," + d.b64_json, seed: req.seed, raw: { ...json, blendModelId: targetModelId } };
     }
-    if (d?.url) return { image: d.url, seed: req.seed, raw: json };
+    if (d?.url) return { image: d.url, seed: req.seed, raw: { ...json, blendModelId: targetModelId } };
     throw new Error("agnes response contains no image");
   }
 
@@ -147,6 +149,20 @@ export function createAgnesProvider(config: AgnesConfig): Provider {
       }
     }
     const status = (lastErr as { status?: number }).status;
+    const fallbackModelId = config.fallbackModelId;
+    const canFailOver = fallbackModelId && fallbackModelId !== modelId
+      && (status === undefined || status === 429 || (status >= 500 && status < 600));
+    if (canFailOver) {
+      try {
+        return await once(req, fallbackModelId);
+      } catch (fallbackError) {
+        const fallbackStatus = (fallbackError as { status?: number }).status;
+        if ((fallbackError as { queueFull?: boolean }).queueFull || fallbackStatus === 429) {
+          throw new FurnaceOverheatError(`锻造炉过热：${modelId} 与 ${fallbackModelId} 队列均不可用`, 60, fallbackStatus);
+        }
+        throw fallbackError;
+      }
+    }
     if ((lastErr as { queueFull?: boolean }).queueFull || status === 429) {
       throw new FurnaceOverheatError("锻造炉过热：上游生成队列已满", 60, status);
     }

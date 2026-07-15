@@ -87,6 +87,15 @@ Concept 2 (Micro Organism)
     expect(parseDirectorSketch("Concept 1\nName: 月胚\nEquation: 日 × 月 → 胚胎")).toBeNull();
   });
 
+  it("缺少命名时保留可用 Prompt，而不是判导演离线", () => {
+    expect(parseDirectorSketch("Concept 1\nPrompt: A luminous cellular galaxy folding a solar core into a cratered lunar membrane, one coherent organism.")).toEqual([
+      {
+        name: "异变方案1",
+        prompt: "A luminous cellular galaxy folding a solar core into a cratered lunar membrane, one coherent organism.",
+      },
+    ]);
+  });
+
   it("回收上游 length 截断前已经写完整的 Fusion Concept 草稿", () => {
     const sketch = `**Fusion Concept 1: The Chrono-Bonsai**
 - Chinese chars: 时光盆景. Let's use "时光盆景".
@@ -120,6 +129,12 @@ describe("parseDirectorConcepts", () => {
   it("纯 JSON", () => {
     const r = parseDirectorConcepts(JSON.stringify({ concepts: [CONCEPT] }));
     expect(r).toEqual([CONCEPT]);
+  });
+
+  it("JSON 缺少命名时不丢弃有效生成方案", () => {
+    expect(parseDirectorConcepts(JSON.stringify({ concepts: [{ prompt: CONCEPT.prompt }] }))).toEqual([
+      { name: "异变方案1", prompt: CONCEPT.prompt },
+    ]);
   });
 
   it("保留可传播的语义方程", () => {

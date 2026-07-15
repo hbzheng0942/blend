@@ -34,6 +34,15 @@ function chatBody(overrides = {}) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("agnes proxy guard", () => {
+  it("exposes binding health without leaking the secret", async () => {
+    const response = await worker.fetch(new Request("https://worker/health", { headers: { Origin: origin } }), env);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      ok: true,
+      bindings: { upstream: true, imageRateLimiter: true, generalRateLimiter: true },
+    });
+  });
+
   it("rejects unknown origins before calling upstream", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
@@ -49,6 +58,7 @@ describe("agnes proxy guard", () => {
       method: "POST", headers: { Origin: origin, "Content-Type": "application/json" }, body: JSON.stringify(imageBody()),
     }), { AGNES_API_KEY: "secret" });
     expect(response.status).toBe(503);
+    expect(response.headers.get("X-Blend-Failure-Origin")).toBe("worker");
   });
 
   it("fails closed without the upstream secret", async () => {
@@ -86,6 +96,7 @@ describe("agnes proxy guard", () => {
     expect(init.headers.Authorization).toBe("Bearer secret");
     expect(JSON.parse(init.body)).not.toHaveProperty("unexpected");
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe(origin);
+    expect(response.headers.get("X-Blend-Upstream-Status")).toBe("200");
   });
 
   it("returns 429 with retry guidance", async () => {

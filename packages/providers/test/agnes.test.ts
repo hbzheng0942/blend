@@ -78,6 +78,26 @@ describe("agnes provider", () => {
     }
   });
 
+  it("公共炉主队列 503 后切到备用模型，而不是整轮失败", async () => {
+    const models: string[] = [];
+    const f = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(init!.body as string);
+      models.push(body.model);
+      return body.model === "agnes-image-2.1-flash" ? queueFullResponse() : okResponse("FALLBACK");
+    });
+    const p = createAgnesProvider({
+      apiKey: "k",
+      modelId: "agnes-image-2.1-flash",
+      fallbackModelId: "agnes-image-2.0-flash",
+      fetchImpl: f as typeof fetch,
+      retryDelaysMs: [],
+    });
+    const result = await p.generate({ prompt: "p", images: [] });
+    expect(result.image).toBe("data:image/png;base64,FALLBACK");
+    expect(models).toEqual(["agnes-image-2.1-flash", "agnes-image-2.0-flash"]);
+    expect(result.raw).toMatchObject({ blendModelId: "agnes-image-2.0-flash" });
+  });
+
   it("400 不重试直接抛", async () => {
     const f = vi.fn(async () =>
       new Response(JSON.stringify({ error: { message: "too many input images" } }), { status: 400 }),

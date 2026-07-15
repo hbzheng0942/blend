@@ -171,12 +171,12 @@ export function parseDirectorConcepts(text: string): DirectorConcept[] | null {
           : typeof parsed.prompt === "string"
             ? [parsed]
             : [];
-    const concepts = candidates.flatMap((c): DirectorConcept[] => {
+    const concepts = candidates.flatMap((c, index): DirectorConcept[] => {
       const name = (c as DirectorConcept).name;
       const prompt = (c as DirectorConcept).prompt;
       const equation = (c as DirectorConcept).equation;
-      return typeof name === "string" && typeof prompt === "string" && prompt.trim().length >= 20
-        ? [{ name: name.trim(), prompt: prompt.trim(), ...(typeof equation === "string" && equation.trim() ? { equation: equation.trim() } : {}) }]
+      return typeof prompt === "string" && prompt.trim().length >= 20
+        ? [{ name: typeof name === "string" && name.trim() ? name.trim() : `异变方案${index + 1}`, prompt: prompt.trim(), ...(typeof equation === "string" && equation.trim() ? { equation: equation.trim() } : {}) }]
         : [];
     });
     return concepts.length ? concepts : null;
@@ -187,14 +187,14 @@ export function parseDirectorConcepts(text: string): DirectorConcept[] | null {
 
 /**
  * Agnes 偶发把普通模型输出误放进 reasoning_content，并以 Markdown 草稿返回。
- * 只回收已经完整落地的 Name / Equation / Prompt 三元组；未完成的方案直接丢弃，
- * 绝不为了凑候选数复制 prompt。
+ * Prompt 是唯一会影响生成的必需字段；命名和公式只是展示元数据，缺失时补稳定名称，
+ * 绝不因为展示字段缺失而丢掉可用的导演方案，也不为了凑候选数复制 prompt。
  */
 export function parseDirectorSketch(text: string): DirectorConcept[] | null {
   const blocks = text.split(
     /\n(?=(?:\*{0,2})?(?:(?:Fusion\s+)?(?:Strategy\s*-\s*)?)?Concept\s*\d)/i,
   );
-  const concepts = blocks.flatMap((block): DirectorConcept[] => {
+  const concepts = blocks.flatMap((block, index): DirectorConcept[] => {
     const promptMatches = [...block.matchAll(/(?:Refined\s+)?Prompt\s*[:：]\s*\**([^\n]+)/gi)];
     const promptRaw = promptMatches.at(-1)?.[1]?.replace(/\*+/g, "").trim();
     if (!promptRaw || promptRaw.length < 20) return [];
@@ -205,8 +205,7 @@ export function parseDirectorSketch(text: string): DirectorConcept[] | null {
     ];
     const nameRaw = nameMatches.at(-1)?.[1] ?? chosenMatches.at(-1)?.[1] ?? "";
     const chineseNames = [...nameRaw.matchAll(/[\p{Script=Han}]{2,6}/gu)].map((match) => match[0]);
-    const name = chineseNames.at(-1);
-    if (!name) return [];
+    const name = chineseNames.at(-1) ?? `异变方案${index + 1}`;
 
     const equationMatches = [...block.matchAll(/(?:Refined\s+)?Equation\s*[:：]\s*\**([^\n]+)/gi)];
     const equationRaw = equationMatches.at(-1)?.[1]

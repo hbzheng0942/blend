@@ -29,7 +29,7 @@ describe("agnes director", () => {
       expect(body.model).toBe("agnes-2.0-flash");
       expect(body.enable_thinking).toBe(false);
       expect(body.temperature).toBe(0.35);
-      expect(body.max_tokens).toBe(650);
+      expect(body.max_tokens).toBe(1_000);
       expect(body.response_format).toEqual({ type: "json_object" });
       expect(body.messages[0].role).toBe("system");
       const content = body.messages[1].content;

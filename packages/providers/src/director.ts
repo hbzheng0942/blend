@@ -76,7 +76,7 @@ export function createAgnesDirector(config: DirectorConfig): AgnesDirector {
       temperature: 0.35,
       // 导演只需要短 JSON；关闭推理，避免 reasoning_content 吃光预算却没有正文。
       enable_thinking: false,
-      max_tokens: 650,
+      max_tokens: 1_000,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: buildDirectorSystemPrompt(req.count, chaos) },

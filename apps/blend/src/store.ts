@@ -285,7 +285,11 @@ export const useBlend = create<BlendState>((set, get) => ({
         ? createOpenAICompatibleProvider({ apiKey: openaiKey, baseUrl: openaiBaseUrl, modelId: openaiModel })
         : createAgnesProvider({
             ...agnesChannel!, modelId,
-            ...(usingBuiltinAgnes ? { timeoutMs: 120_000, retryDelaysMs: [5_000] } : {}),
+            ...(usingBuiltinAgnes ? {
+              timeoutMs: 120_000,
+              retryDelaysMs: [5_000],
+              fallbackModelId: modelId === "agnes-image-2.1-flash" ? "agnes-image-2.0-flash" : "agnes-image-2.1-flash",
+            } : {}),
           });
     if (!provider.capabilities.supportedOperators.includes(operator)) {
       set({ status: { phase: "error", message: "该模型尚未掌握此禁术（spike 判定不达标）" } });

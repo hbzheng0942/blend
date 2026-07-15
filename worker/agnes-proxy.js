@@ -13,7 +13,7 @@ const IMAGE_SIZES = new Set(["1K", "1024x1024"]);
 const IMAGE_RATIOS = new Set(["1:1"]);
 const DATA_IMAGE = /^data:image\/(png|jpeg|webp);base64,/;
 
-function json(message, status, cors = {}) {
+function json(message, status, cors = {}, diagnostic = {}) {
   return new Response(JSON.stringify({ error: { message } }), {
     status,
     headers: {
@@ -21,6 +21,7 @@ function json(message, status, cors = {}) {
       "Cache-Control": "no-store",
       "X-Content-Type-Options": "nosniff",
       ...cors,
+      ...diagnostic,
     },
   });
 }
@@ -41,7 +42,7 @@ function corsFor(request, env) {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
     "Access-Control-Max-Age": "86400",
-    "Access-Control-Expose-Headers": "Retry-After",
+    "Access-Control-Expose-Headers": "Retry-After, X-Blend-Failure-Origin, X-Blend-Upstream-Status",
     Vary: "Origin",
   };
 }
@@ -161,6 +162,16 @@ export default {
     if (request.headers.has("Origin") && !cors) return json("origin not allowed", 403);
 
     const route = `${request.method} ${url.pathname}`;
+    if (route === "GET /health") {
+      const bindings = {
+        upstream: Boolean(env.AGNES_API_KEY),
+        imageRateLimiter: typeof env.IMAGE_RATE_LIMITER?.limit === "function",
+        generalRateLimiter: typeof env.GENERAL_RATE_LIMITER?.limit === "function",
+      };
+      return new Response(JSON.stringify({ ok: Object.values(bindings).every(Boolean), bindings }), {
+        headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...(cors || {}) },
+      });
+    }
     if (!["POST /v1/images/generations", "POST /v1/chat/completions", "GET /v1/models"].includes(route)) {
       return json("endpoint not allowed", 403, cors || {});
     }
@@ -190,11 +201,18 @@ export default {
       for (const [key, value] of Object.entries(cors || {})) headers.set(key, value);
       headers.set("Cache-Control", "no-store");
       headers.set("X-Content-Type-Options", "nosniff");
+      headers.set("X-Blend-Upstream-Status", String(upstream.status));
+      if (!upstream.ok) headers.set("X-Blend-Failure-Origin", "upstream");
       return new Response(upstream.body, { status: upstream.status, headers });
     } catch (error) {
       const status = error instanceof RequestError ? error.status : 500;
       const headers = { ...(cors || {}), ...(status === 429 ? { "Retry-After": "60" } : {}) };
-      return json(error instanceof RequestError ? error.message : "proxy error", status, headers);
+      return json(
+        error instanceof RequestError ? error.message : "proxy error",
+        status,
+        headers,
+        { "X-Blend-Failure-Origin": "worker" },
+      );
     }
   },
 };
